@@ -95,6 +95,18 @@ export async function loadIntoDuckDB(
   opts: { bytes: Uint8Array; format: SourceFormat; label: string },
 ): Promise<LoadedTable> {
   const file = "source_input";
+
+  // Re-open the database first. `enable_external_access=false` (see lockDown
+  // below) is global to the database and cannot be switched back on, so a
+  // database that has already loaded one dataset can never read another file --
+  // every load after the first failed with "file system operations are disabled
+  // by configuration". Re-opening gives a fresh database with default settings,
+  // and unlike terminating the worker it does not recompile the 34 MiB module.
+  //
+  // Any connection held from a previous dataset is invalidated by this, so
+  // callers must close theirs before calling and reconnect afterwards.
+  await db.open({});
+
   await db.dropFiles();
   await db.registerFileBuffer(file, opts.bytes);
 

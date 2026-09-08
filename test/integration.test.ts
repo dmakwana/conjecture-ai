@@ -29,15 +29,16 @@ beforeAll(async () => {
     return;
   }
 
-  const { db, conn: c } = await createTestDb();
-  conn = c;
+  const testDb = await createTestDb();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  loaded = await loadIntoDuckDB(db as any, {
+  loaded = await loadIntoDuckDB(testDb.db as any, {
     bytes,
     format: "parquet",
     label: "lineitem.parquet",
   });
+  // After the load, because loadIntoDuckDB re-opens the database.
+  conn = await testDb.connect();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   profile = await profileTable(conn as any, loaded);
 }, 300_000);

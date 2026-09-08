@@ -55,10 +55,14 @@ export default function Page() {
       });
 
       setStatus("Loading into DuckDB…");
+      // loadIntoDuckDB re-opens the database, which invalidates any connection
+      // held for the previous dataset, so release it first.
+      if (connRef.current) {
+        await connRef.current.close();
+        connRef.current = null;
+      }
       const table = await loadIntoDuckDB(db, { bytes, format, label });
       setLoaded(table);
-
-      connRef.current?.close();
       connRef.current = await db.connect();
 
       setPhase("profiling");

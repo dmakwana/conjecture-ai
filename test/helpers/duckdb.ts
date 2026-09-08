@@ -22,23 +22,36 @@ export interface TestConn {
  * enable_external_access lockdown — can be exercised in tests.
  */
 export interface TestDb {
+  /** Shaped like AsyncDuckDB, enough for lib/duckdb/load.ts. */
   db: unknown;
-  conn: TestConn;
+  /** Open a fresh connection. Do this AFTER loading: loadIntoDuckDB re-opens
+   *  the database, which invalidates connections taken before it. */
+  connect(): Promise<TestConn>;
 }
 
 export async function createTestDb(): Promise<TestDb> {
-  const { bindings, conn } = await createBindings();
+  const { bindings } = await createBindings();
+
   const asyncLike = {
+    open: async (config: unknown) => bindings.open(config),
+    reset: async () => bindings.reset(),
     dropFiles: async () => bindings.dropFiles(),
     dropFile: async (name: string) => bindings.dropFile(name),
     registerFileBuffer: async (name: string, buffer: Uint8Array) =>
       bindings.registerFileBuffer(name, buffer),
-    connect: async () => ({
-      query: async (sql: string) => conn.query(sql),
-      close: async () => {},
-    }),
+    connect: async () => {
+      const c = bindings.connect();
+      return { query: async (sql: string) => c.query(sql), close: async () => c.close() };
+    },
   };
-  return { db: asyncLike, conn: { query: async (sql: string) => conn.query(sql), close: () => conn.close() } };
+
+  return {
+    db: asyncLike,
+    connect: async () => {
+      const c = bindings.connect();
+      return { query: async (sql: string) => c.query(sql), close: () => c.close() };
+    },
+  };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
