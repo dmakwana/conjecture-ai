@@ -7,7 +7,11 @@ import { ViolationTable } from "./ViolationTable";
 
 export interface HypothesisRow {
   hypothesis: Hypothesis;
+  /** null until this check has run. */
   result: HypothesisResult | null;
+  /** True while its query is in flight, so a queued check reads differently
+   *  from one that is actually executing. */
+  running: boolean;
 }
 
 const SEVERITY_TONE: Record<Severity, string> = {
@@ -22,9 +26,21 @@ function checkText(h: Hypothesis): string {
     : h.check.expression;
 }
 
-function Verdict({ result }: { result: HypothesisResult | null }) {
+function Verdict({
+  result,
+  running,
+}: {
+  result: HypothesisResult | null;
+  running: boolean;
+}) {
   if (result === null) {
-    return <span className="muted text-xs font-mono">checking…</span>;
+    return running ? (
+      <span className="text-blue-600 dark:text-blue-400 text-xs font-mono">
+        <span className="inline-block animate-pulse">testing…</span>
+      </span>
+    ) : (
+      <span className="muted text-xs font-mono">queued</span>
+    );
   }
   if (result.status === "holds") {
     return (
@@ -71,13 +87,18 @@ export function HypothesisList({
 
   return (
     <ul className="panel rounded-md divide-y hairline">
-      {rows.map(({ hypothesis, result }) => {
+      {rows.map(({ hypothesis, result, running }) => {
         const falsified = result?.status === "falsified";
         return (
-          <li key={hypothesis.id} className="px-4 py-3">
+          <li
+            key={hypothesis.id}
+            className={`px-4 py-3 transition-opacity ${
+              result === null && !running ? "opacity-60" : ""
+            }`}
+          >
             <div className="flex items-baseline gap-3">
               <span className="w-20 shrink-0">
-                <Verdict result={result} />
+                <Verdict result={result} running={running} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">

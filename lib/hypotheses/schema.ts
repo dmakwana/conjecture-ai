@@ -109,3 +109,32 @@ export function normalizeHypotheses(wire: WireHypotheses): Hypothesis[] {
   });
   return out;
 }
+
+/* ----------------------------------------------------------------- exchange */
+
+/**
+ * A verbatim record of the single exchange with Claude, returned to the client
+ * so the user can read exactly what was asked and exactly what came back.
+ *
+ * `system` and `userMessage` are the actual strings sent, not a reconstruction —
+ * the whole point of showing them is that they are the real thing.
+ */
+export interface Exchange {
+  model: string;
+  system: string;
+  userMessage: string;
+  /** The model's structured output, pretty-printed. */
+  responseJson: string;
+  stopReason: string | null;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  /**
+   * Number of HTTP requests actually made to Anthropic. This is measured, not
+   * assumed: the design makes exactly one request per run, and anything above 1
+   * means the SDK retried a transient failure (the same single query, resent).
+   */
+  httpAttempts: number;
+  /** Hypotheses returned before any were dropped as malformed. */
+  hypothesesReturned: number;
+}

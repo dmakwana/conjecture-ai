@@ -103,3 +103,58 @@ export async function fetchViolationRows(
   });
   return { columns: cols, rows };
 }
+
+/**
+ * How many DuckDB connections evaluate checks at once.
+ *
+ * Honest caveat: the `eh` WebAssembly build is single-threaded, so this is not
+ * true CPU parallelism — DuckDB still executes one query at a time. What it does
+ * buy is that queries are queued inside the worker instead of each waiting for a
+ * JS round trip, and results surface the moment each finishes rather than after
+ * the whole batch. If the threaded build is ever enabled this becomes real
+ * parallelism with no code change.
+ */
+export const EVAL_CONCURRENCY = 4;
+
+export interface EvaluationHandlers {
+  onStart?: (id: string) => void;
+  onResult?: (id: string, result: HypothesisResult) => void;
+}
+
+/**
+ * Evaluate every hypothesis, reporting each verdict as it lands so the UI can
+ * fill in incrementally instead of waiting for the slowest check.
+ */
+export async function evaluateAllHypotheses(
+  db: duckdb.AsyncDuckDB,
+  hypotheses: Hypothesis[],
+  knownColumns: string[],
+  rowCount: number,
+  handlers: EvaluationHandlers = {},
+  concurrency: number = EVAL_CONCURRENCY,
+  signal?: AbortSignal,
+): Promise<void> {
+  let cursor = 0;
+  const lanes = Math.max(1, Math.min(concurrency, hypotheses.length));
+
+  await Promise.all(
+    Array.from({ length: lanes }, async () => {
+      const conn = await db.connect();
+      try {
+        for (;;) {
+          const index = cursor++;
+          if (index >= hypotheses.length || signal?.aborted) break;
+
+          const h = hypotheses[index];
+          handlers.onStart?.(h.id);
+          // evaluateHypothesis never throws; a bad check becomes a "skipped"
+          // verdict, so one failure cannot stall a lane or lose the rest.
+          const result = await evaluateHypothesis(conn, h, knownColumns, rowCount);
+          handlers.onResult?.(h.id, result);
+        }
+      } finally {
+        await conn.close();
+      }
+    }),
+  );
+}

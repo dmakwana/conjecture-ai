@@ -1,5 +1,5 @@
 import type { TableProfile } from "@/lib/profile/types";
-import type { Hypothesis } from "@/lib/hypotheses/schema";
+import type { Exchange, Hypothesis } from "@/lib/hypotheses/schema";
 
 /**
  * In development the static site (:3000) and the Worker (:8787) are separate
@@ -9,7 +9,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 export interface HypothesesResponse {
   hypotheses: Hypothesis[];
-  usage: { inputTokens: number; outputTokens: number };
+  /** Verbatim record of the single exchange, for the user to inspect. */
+  exchange: Exchange;
 }
 
 export async function requestHypotheses(

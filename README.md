@@ -98,6 +98,36 @@ domain. Without it, anyone who finds the URL can spend your API key.
 Note: Worker-level Access policies do not support WebSockets, which is one reason this app uses a
 single request/response rather than a streaming socket.
 
+## One query, one response — and you can read both
+
+Each run makes exactly **one** request to Claude and gets **one** response. There is no agent
+loop, no tool use, and no retry-with-follow-up: the model is asked once for structured output and
+that is the entire exchange. No tools are declared in the request, so the model has no mechanism
+to ask for another turn even if it wanted one.
+
+That is measured rather than asserted. `worker/index.ts` wraps `fetch` in a counter and reports
+`httpAttempts` on every response, so the number shown in the UI is the real one. If it ever reads
+above 1, the SDK resent the same query after a transient failure — the UI says so explicitly
+rather than letting it look like an extra question. `test/exchange.test.ts` drives the Worker with
+a recording client and asserts one request, one user message, and no `tools` field.
+
+The **Transcript** panel shows the exchange verbatim: the system prompt, the user message, and the
+model's raw structured output, plus model, token counts, latency and stop reason. Those strings
+are the ones actually sent — recorded in the Worker at the point of the call, not reconstructed
+afterwards, since a reconstruction would defeat the point of showing them.
+
+## Results appear as they are tested
+
+Hypotheses render the moment the model replies, each marked `queued`, then `testing…`, then its
+verdict, with an `n of m tested` counter. Checks run over a pool of DuckDB connections
+(`evaluateAllHypotheses`) so several are in flight at once and each verdict lands as soon as it is
+ready, instead of the page sitting still until the slowest one finishes.
+
+An honest caveat: the `eh` WebAssembly build is single-threaded, so this is not true CPU
+parallelism — DuckDB still executes one query at a time. What the pool actually buys is that
+queries queue inside the worker rather than each waiting for a JS round trip, and that results
+stream. If the threaded build is ever enabled it becomes real parallelism with no code change.
+
 ## Keeping it off search engines and AI crawlers
 
 Four layers, in descending order of how much they are actually worth:
@@ -139,7 +169,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-44 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+62 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 
@@ -149,3 +179,4 @@ loads a real remote Parquet file end to end.
 - Large files are held in memory (see the trade-off above).
 - Single-threaded DuckDB — the threaded build needs site-wide cross-origin isolation.
 - Hypotheses that fail to parse are reported as "not run" rather than repaired.
+- Concurrency is bounded by the single-threaded WebAssembly build (see above).

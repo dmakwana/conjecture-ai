@@ -6,16 +6,19 @@ import { validateSource, formatFromExtension, sniffFormat, formatBytes } from "@
 import type { ValidationReport, SourceFormat } from "@/lib/sources/validate";
 import type { LoadedTable } from "@/lib/duckdb/load";
 import type { TableProfile } from "@/lib/profile/types";
-import type { Hypothesis } from "@/lib/hypotheses/schema";
-import { evaluateHypothesis, fetchViolationRows } from "@/lib/hypotheses/evaluate";
+import type { Exchange, Hypothesis } from "@/lib/hypotheses/schema";
+import { evaluateAllHypotheses, fetchViolationRows } from "@/lib/hypotheses/evaluate";
 import { requestHypotheses } from "@/lib/api";
 import { ValidationChecklist } from "@/components/ValidationChecklist";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { HypothesisList, type HypothesisRow } from "@/components/HypothesisList";
+import { ExchangePanel } from "@/components/ExchangePanel";
 
 const DEMO_URL = "https://shell.duckdb.org/data/tpch/0_01/parquet/lineitem.parquet";
 
-type Phase = "idle" | "validating" | "loading" | "profiling" | "ready" | "hypothesizing";
+type Phase =
+  | "idle" | "validating" | "loading" | "profiling"
+  | "ready" | "hypothesizing" | "testing";
 
 export default function Page() {
   const [url, setUrl] = useState("");
@@ -26,6 +29,8 @@ export default function Page() {
   const [loaded, setLoaded] = useState<LoadedTable | null>(null);
   const [profile, setProfile] = useState<TableProfile | null>(null);
   const [rows, setRows] = useState<HypothesisRow[]>([]);
+  const [exchange, setExchange] = useState<Exchange | null>(null);
+  const dbRef = useRef<duckdb.AsyncDuckDB | null>(null);
 
   const connRef = useRef<duckdb.AsyncDuckDBConnection | null>(null);
   const busy = phase !== "idle" && phase !== "ready";
@@ -35,6 +40,7 @@ export default function Page() {
     setProfile(null);
     setLoaded(null);
     setRows([]);
+    setExchange(null);
   };
 
   /** Shared tail of both entry points: boot DuckDB, load bytes, profile. */
@@ -63,6 +69,7 @@ export default function Page() {
       }
       const table = await loadIntoDuckDB(db, { bytes, format, label });
       setLoaded(table);
+      dbRef.current = db;
       connRef.current = await db.connect();
 
       setPhase("profiling");
@@ -134,26 +141,44 @@ export default function Page() {
   );
 
   const findInvariants = useCallback(async () => {
-    if (!profile || !loaded || !connRef.current) return;
+    if (!profile || !loaded || !dbRef.current) return;
     setError(null);
     setRows([]);
+    setExchange(null);
     setPhase("hypothesizing");
     setStatus("Asking Claude for hypotheses…");
 
     try {
-      const { hypotheses } = await requestHypotheses(profile);
-      setRows(hypotheses.map((h) => ({ hypothesis: h, result: null })));
+      // One request, one response — see worker/hypotheses.ts.
+      const response = await requestHypotheses(profile);
+      setExchange(response.exchange);
 
-      const known = loaded.columns.map((c) => c.name);
-      // DuckDB serialises queries on one connection, so run these in order and
-      // stream each verdict into the list as it lands.
-      for (const h of hypotheses) {
-        setStatus(`Testing hypotheses… ${h.title}`);
-        const result = await evaluateHypothesis(connRef.current, h, known, loaded.rowCount);
-        setRows((prev) =>
-          prev.map((r) => (r.hypothesis.id === h.id ? { ...r, result } : r)),
-        );
-      }
+      // Render every hypothesis immediately, then fill verdicts in as they land
+      // rather than making the user wait for the whole batch.
+      setRows(
+        response.hypotheses.map((h) => ({ hypothesis: h, result: null, running: false })),
+      );
+      setStatus("");
+      setPhase("testing");
+
+      await evaluateAllHypotheses(
+        dbRef.current,
+        response.hypotheses,
+        loaded.columns.map((c) => c.name),
+        loaded.rowCount,
+        {
+          onStart: (id) =>
+            setRows((prev) =>
+              prev.map((r) => (r.hypothesis.id === id ? { ...r, running: true } : r)),
+            ),
+          onResult: (id, result) =>
+            setRows((prev) =>
+              prev.map((r) =>
+                r.hypothesis.id === id ? { ...r, result, running: false } : r,
+              ),
+            ),
+        },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -247,9 +272,10 @@ export default function Page() {
             >
               Find invariants
             </button>
-            {tested > 0 && (
+            {rows.length > 0 && (
               <span className="muted text-sm">
-                {tested} tested · {falsified} falsified
+                {tested} of {rows.length} tested
+                {falsified > 0 && ` · ${falsified} falsified`}
               </span>
             )}
             {loaded && !loaded.externalAccessDisabled && (
@@ -261,9 +287,9 @@ export default function Page() {
         </>
       )}
 
-      {rows.length > 0 && (
-        <HypothesisList rows={rows} onInspect={inspect} />
-      )}
+      {exchange && <ExchangePanel exchange={exchange} />}
+
+      {rows.length > 0 && <HypothesisList rows={rows} onInspect={inspect} />}
     </main>
   );
 }

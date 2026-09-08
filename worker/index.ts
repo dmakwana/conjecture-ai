@@ -1,10 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { TableProfileSchema } from "@/lib/profile/types";
-import { WireHypothesesSchema, normalizeHypotheses } from "@/lib/hypotheses/schema";
-import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
+import {
+  generateHypotheses,
+  MODEL,
+  RefusalError,
+  UnusableResponseError,
+} from "./hypotheses";
 
 interface Env {
   ANTHROPIC_API_KEY: string;
@@ -19,9 +22,7 @@ interface Env {
  * cannot be repurposed as a general-purpose Claude proxy by anyone who gets
  * past Cloudflare Access.
  */
-const MODEL = "claude-sonnet-5";
-const MAX_TOKENS = 16_000;
-const MAX_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -80,32 +81,34 @@ app.post("/api/hypotheses", async (c) => {
   }
   const profile = parsed.data;
 
-  const client = new Anthropic({ apiKey: c.env.ANTHROPIC_API_KEY });
+  // Count the HTTP requests actually made, so the transcript shown to the user
+  // reports a measured number rather than a promise. One logical query should
+  // mean one request; more than one means the SDK retried a transient failure.
+  let httpAttempts = 0;
+  const countingFetch: typeof fetch = (input, init) => {
+    httpAttempts++;
+    return fetch(input, init);
+  };
+
+  const client = new Anthropic({
+    apiKey: c.env.ANTHROPIC_API_KEY,
+    fetch: countingFetch,
+  });
 
   try {
-    const response = await client.messages.parse({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildUserMessage(profile) }],
-      output_config: { format: zodOutputFormat(WireHypothesesSchema) },
-    });
-
-    if (response.stop_reason === "refusal") {
-      return c.json({ error: "The model declined to answer this request." }, 422);
-    }
-    if (!response.parsed_output) {
-      return c.json({ error: "The model did not return a usable result." }, 502);
-    }
+    const { hypotheses, exchange } = await generateHypotheses(client, profile);
 
     return c.json({
-      hypotheses: normalizeHypotheses(response.parsed_output),
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-      },
+      hypotheses,
+      exchange: { ...exchange, httpAttempts },
     });
   } catch (err) {
+    if (err instanceof RefusalError) {
+      return c.json({ error: err.message }, 422);
+    }
+    if (err instanceof UnusableResponseError) {
+      return c.json({ error: err.message }, 502);
+    }
     if (err instanceof Anthropic.RateLimitError) {
       return c.json({ error: "Rate limited by Anthropic. Try again shortly." }, 429);
     }
