@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but this one holds no secret, only the dev API base URL, and `npm run dev`
+# silently misroutes /api requests without it. Secrets live in .dev.vars.
+!.env.development
 
 # vercel
 .vercel
@@ -39,3 +42,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# cloudflare
+.dev.vars
+.wrangler
+out
+
+# data
+/demo-data

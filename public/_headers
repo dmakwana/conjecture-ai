@@ -1,0 +1,11 @@
+# Cloudflare Workers Static Assets applies these to asset responses.
+# Worker responses (/api/*) set the same header in worker/index.ts.
+#
+# X-Robots-Tag is the header equivalent of the robots meta tag, and unlike
+# robots.txt it also tells a crawler that already has the URL not to index it.
+# Like robots.txt, it is honoured voluntarily — Cloudflare Access is the only
+# thing that actually blocks access.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff

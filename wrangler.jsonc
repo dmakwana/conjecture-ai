@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "duck-invariant",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Every extra public hostname is another way to stumble onto this site.
+  // Preview URLs publish <version>-duck-invariant.<subdomain>.workers.dev,
+  // which is not covered by an Access policy scoped to the production host.
+  "preview_urls": false,
+  "assets": {
+    // `next build` with output:'export' writes here.
+    "directory": "./out",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Everything else is served straight from the edge without waking the Worker.
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
+}
