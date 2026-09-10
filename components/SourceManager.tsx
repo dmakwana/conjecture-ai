@@ -1,0 +1,180 @@
+"use client";
+
+import { useRef, useState } from "react";
+import type { ValidationReport } from "@/lib/sources/validate";
+import { formatBytes } from "@/lib/sources/validate";
+import { ValidationChecklist } from "./ValidationChecklist";
+
+export interface SourceSummary {
+  id: string;
+  table: string;
+  label: string;
+  rowCount: number;
+  columnCount: number;
+  bytes: number;
+}
+
+const DEMO = [
+  { label: "lineitem.parquet", url: "https://shell.duckdb.org/data/tpch/0_01/parquet/lineitem.parquet" },
+  { label: "orders.parquet", url: "https://shell.duckdb.org/data/tpch/0_01/parquet/orders.parquet" },
+];
+
+/**
+ * Adding data is a choice between a URL and a file, so neither input is shown
+ * until one is picked — an always-visible URL box implies the URL is the only
+ * way in.
+ */
+export function SourceManager({
+  sources,
+  busy,
+  report,
+  onAddUrl,
+  onAddFiles,
+  onRemove,
+}: {
+  sources: SourceSummary[];
+  busy: boolean;
+  report: ValidationReport | null;
+  onAddUrl: (url: string) => void;
+  onAddFiles: (files: File[]) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [mode, setMode] = useState<"none" | "url">("none");
+  const [url, setUrl] = useState("");
+  const [dragging, setDragging] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const submitUrl = () => {
+    const target = url.trim();
+    if (target === "" || busy) return;
+    onAddUrl(target);
+    setUrl("");
+    setMode("none");
+  };
+
+  return (
+    <section
+      className={`space-y-3 rounded-md ${dragging ? "outline-2 outline-dashed outline-blue-500/60 outline-offset-4" : ""}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!busy) setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (busy) return;
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) onAddFiles(files);
+      }}
+    >
+      {sources.length > 0 && (
+        <ul className="panel rounded-md divide-y hairline text-sm">
+          {sources.map((s) => (
+            <li key={s.id} className="flex items-baseline gap-3 px-3 py-2">
+              <code className="font-mono text-xs font-medium">{s.table}</code>
+              <span className="muted text-xs truncate flex-1" title={s.label}>
+                {s.label}
+              </span>
+              <span className="muted text-xs whitespace-nowrap">
+                {s.rowCount.toLocaleString()} rows · {s.columnCount} cols ·{" "}
+                {formatBytes(s.bytes)}
+              </span>
+              <button
+                onClick={() => onRemove(s.id)}
+                disabled={busy}
+                className="muted text-xs underline underline-offset-2 hover:no-underline disabled:opacity-40"
+                aria-label={`Remove ${s.table}`}
+              >
+                remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {mode === "url" ? (
+        <div className="flex gap-2">
+          <input
+            autoFocus
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitUrl();
+              if (e.key === "Escape") setMode("none");
+            }}
+            placeholder="https://example.com/data.parquet"
+            spellCheck={false}
+            className="panel flex-1 rounded-md px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/40"
+          />
+          <button
+            onClick={submitUrl}
+            disabled={busy || url.trim() === ""}
+            className="rounded-md px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Add
+          </button>
+          <button
+            onClick={() => setMode("none")}
+            className="muted rounded-md px-2 py-2 text-sm hover:underline"
+          >
+            cancel
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setMode("url")}
+            disabled={busy}
+            className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
+          >
+            + From a URL
+          </button>
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={busy}
+            className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
+          >
+            + From a file
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept=".parquet,.csv,.tsv,.json,.ndjson,.jsonl"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              if (files.length > 0) onAddFiles(files);
+              e.target.value = "";
+            }}
+          />
+          <span className="muted text-xs">
+            Parquet, CSV or JSON · drop files anywhere · add several to test across them
+          </span>
+        </div>
+      )}
+
+      {sources.length === 0 && mode === "none" && (
+        <p className="muted text-xs">
+          or try{" "}
+          {DEMO.map((d, i) => (
+            <span key={d.url}>
+              {i > 0 && " and "}
+              <button
+                onClick={() => onAddUrl(d.url)}
+                disabled={busy}
+                className="underline underline-offset-2 hover:no-underline disabled:opacity-40"
+              >
+                {d.label}
+              </button>
+            </span>
+          ))}{" "}
+          — load both to see cross-table checks
+        </p>
+      )}
+
+      {report && !report.ok && <ValidationChecklist checks={report.checks} />}
+    </section>
+  );
+}

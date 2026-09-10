@@ -1,26 +1,29 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestConn } from "./helpers/duckdb";
-import { loadIntoDuckDB } from "@/lib/duckdb/load";
-import { evaluateAllHypotheses } from "@/lib/hypotheses/evaluate";
+import { evaluateAllHypotheses, type Schema } from "@/lib/hypotheses/evaluate";
 import type { Hypothesis, HypothesisResult } from "@/lib/hypotheses/schema";
+import { loadSources, encode } from "./helpers/load";
 import { CSV_FIXTURE } from "./fixtures";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let db: any;
 let conn: TestConn;
-const COLUMNS = ["id", "email", "full_name", "ssn", "amount", "created_at", "active", "notes"];
+let schema: Schema;
+let rowCounts: Map<string, number>;
 
 const make = (id: string, expression: string): Hypothesis => ({
-  id, title: id, rationale: "r", columns: [], severity: "medium",
-  check: { kind: "row_predicate", expression },
+  id, title: id, rationale: "r", severity: "medium",
+  check: { kind: "row_predicate", table: "data", expression },
 });
 
 beforeAll(async () => {
   const testDb = await createTestDb();
   db = testDb.db;
-  await loadIntoDuckDB(db, {
-    bytes: new TextEncoder().encode(CSV_FIXTURE), format: "csv", label: "fixture.csv",
-  });
+  const r = await loadSources(db, [
+    { table: "data", label: "fixture.csv", format: "csv", bytes: encode(CSV_FIXTURE) },
+  ]);
+  schema = r.schema;
+  rowCounts = r.rowCounts;
   conn = await testDb.connect();
 }, 180_000);
 
@@ -40,7 +43,7 @@ describe("evaluateAllHypotheses", () => {
     const started: string[] = [];
     const results = new Map<string, HypothesisResult>();
 
-    await evaluateAllHypotheses(db, hypotheses, COLUMNS, 6, {
+    await evaluateAllHypotheses(db, hypotheses, schema, rowCounts, {
       onStart: (id) => started.push(id),
       onResult: (id, r) => {
         expect(results.has(id), `${id} reported twice`).toBe(false);
@@ -63,7 +66,7 @@ describe("evaluateAllHypotheses", () => {
 
     let inFlight = 0;
     let peak = 0;
-    await evaluateAllHypotheses(db, hypotheses, COLUMNS, 6, {
+    await evaluateAllHypotheses(db, hypotheses, schema, rowCounts, {
       onStart: () => {
         inFlight++;
         peak = Math.max(peak, inFlight);
@@ -78,13 +81,13 @@ describe("evaluateAllHypotheses", () => {
 
   it("handles fewer hypotheses than lanes, and none at all", async () => {
     const one = new Map<string, HypothesisResult>();
-    await evaluateAllHypotheses(db, [make("only", "id > 0")], COLUMNS, 6, {
+    await evaluateAllHypotheses(db, [make("only", "id > 0")], schema, rowCounts, {
       onResult: (id, r) => one.set(id, r),
     });
     expect(one.size).toBe(1);
 
     await expect(
-      evaluateAllHypotheses(db, [], COLUMNS, 6, {}),
+      evaluateAllHypotheses(db, [], schema, rowCounts, {}),
     ).resolves.toBeUndefined();
   }, 120_000);
 
@@ -94,7 +97,7 @@ describe("evaluateAllHypotheses", () => {
     let done = 0;
 
     await evaluateAllHypotheses(
-      db, hypotheses, COLUMNS, 6,
+      db, hypotheses, schema, rowCounts,
       { onResult: () => { if (++done === 4) controller.abort(); } },
       2,
       controller.signal,

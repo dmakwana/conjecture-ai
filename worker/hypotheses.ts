@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { TableProfile } from "@/lib/profile/types";
+import type { DatabaseProfile } from "@/lib/profile/types";
 import {
   WireHypothesesSchema,
   normalizeHypotheses,
@@ -23,7 +23,7 @@ export class UnusableResponseError extends Error {}
  */
 export async function generateHypotheses(
   client: Anthropic,
-  profile: TableProfile,
+  profile: DatabaseProfile,
 ): Promise<{ hypotheses: Hypothesis[]; exchange: Omit<Exchange, "httpAttempts"> }> {
   const system = SYSTEM_PROMPT;
   const userMessage = buildUserMessage(profile);

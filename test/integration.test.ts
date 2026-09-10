@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestDb, type TestConn } from "./helpers/duckdb";
-import { loadIntoDuckDB, type LoadedTable } from "@/lib/duckdb/load";
-import { profileTable } from "@/lib/profile/profile";
-import { evaluateHypothesis } from "@/lib/hypotheses/evaluate";
-import type { TableProfile } from "@/lib/profile/types";
-import type { Hypothesis } from "@/lib/hypotheses/schema";
+import { rebuildDatabase, type LoadedDatabase } from "@/lib/duckdb/load";
+import { profileDatabase } from "@/lib/profile/profile";
+import { evaluateHypothesis, schemaFrom } from "@/lib/hypotheses/evaluate";
+import type { DatabaseProfile } from "@/lib/profile/types";
+import type { Check, Hypothesis } from "@/lib/hypotheses/schema";
 
 /**
  * End-to-end against a real remote Parquet file, using the same loader and
@@ -14,8 +14,8 @@ import type { Hypothesis } from "@/lib/hypotheses/schema";
 const PARQUET_URL = "https://shell.duckdb.org/data/tpch/0_01/parquet/lineitem.parquet";
 
 let conn: TestConn;
-let loaded: LoadedTable;
-let profile: TableProfile;
+let loaded: LoadedDatabase;
+let profile: DatabaseProfile;
 let available = true;
 
 beforeAll(async () => {
@@ -32,15 +32,13 @@ beforeAll(async () => {
   const testDb = await createTestDb();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  loaded = await loadIntoDuckDB(testDb.db as any, {
-    bytes,
-    format: "parquet",
-    label: "lineitem.parquet",
-  });
-  // After the load, because loadIntoDuckDB re-opens the database.
+  loaded = await rebuildDatabase(testDb.db as any, [
+    { table: "lineitem", label: "lineitem.parquet", format: "parquet", bytes },
+  ]);
+  // After the load, because rebuildDatabase re-opens the database.
   conn = await testDb.connect();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  profile = await profileTable(conn as any, loaded);
+  profile = await profileDatabase(conn as any, loaded);
 }, 300_000);
 
 afterAll(() => conn?.close());
@@ -48,9 +46,10 @@ afterAll(() => conn?.close());
 describe("real Parquet end to end", () => {
   it("loads the TPC-H lineitem table", () => {
     if (!available) return;
-    expect(loaded.rowCount).toBeGreaterThan(50_000);
-    expect(loaded.columns.map((c) => c.name)).toContain("l_orderkey");
-    expect(loaded.format).toBe("parquet");
+    expect(loaded.tables).toHaveLength(1);
+    expect(loaded.tables[0].rowCount).toBeGreaterThan(50_000);
+    expect(loaded.tables[0].columns.map((c) => c.name)).toContain("l_orderkey");
+    expect(loaded.tables[0].format).toBe("parquet");
   });
 
   it("disables external access after loading", () => {
@@ -70,20 +69,21 @@ describe("real Parquet end to end", () => {
 
   it("profiles every column with sane statistics", () => {
     if (!available) return;
-    expect(profile.columns).toHaveLength(loaded.columns.length);
+    const table = profile.tables[0];
+    expect(table.columns).toHaveLength(loaded.tables[0].columns.length);
 
-    const quantity = profile.columns.find((c) => c.name === "l_quantity");
+    const quantity = table.columns.find((c) => c.name === "l_quantity");
     expect(quantity?.class).toBe("numeric");
     expect(quantity?.numeric?.min).toBeGreaterThan(0);
     expect(quantity?.numeric?.max).toBeLessThanOrEqual(50);
 
-    const shipdate = profile.columns.find((c) => c.name === "l_shipdate");
+    const shipdate = table.columns.find((c) => c.name === "l_shipdate");
     expect(shipdate?.class).toBe("temporal");
     expect(shipdate?.temporal?.minISO).toMatch(/^\d{4}-\d{2}-\d{2}/);
     expect(shipdate?.temporal?.spanDays).toBeGreaterThan(0);
 
     // Every percentage must be a real percentage, not a silently-zero Decimal128.
-    for (const col of profile.columns) {
+    for (const col of table.columns) {
       if (!col.string) continue;
       const cc = col.string.charClassPct;
       expect(cc.alpha + cc.digit + cc.space + cc.punct + cc.other).toBeCloseTo(100, 0);
@@ -101,23 +101,26 @@ describe("real Parquet end to end", () => {
 
   it("evaluates hypotheses against the real table", async () => {
     if (!available) return;
-    const columns = loaded.columns.map((c) => c.name);
-    const h = (check: Hypothesis["check"]): Hypothesis => ({
-      id: "h", title: "t", rationale: "r", columns: [], severity: "medium", check,
+    const schema = schemaFrom(loaded.tables);
+    const rowCounts = new Map(loaded.tables.map((t) => [t.table, t.rowCount]));
+    const h = (check: Check): Hypothesis => ({
+      id: "h", title: "t", rationale: "r", severity: "medium", check,
     });
 
     // True of TPC-H by construction.
     const holds = await evaluateHypothesis(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      conn as any, h({ kind: "row_predicate", expression: "l_discount BETWEEN 0 AND 1" }),
-      columns, loaded.rowCount,
+      conn as any,
+      h({ kind: "row_predicate", table: "lineitem", expression: "l_discount BETWEEN 0 AND 1" }),
+      schema, rowCounts,
     );
     expect(holds.status).toBe("holds");
 
     // False: l_orderkey repeats across line items.
     const falsified = await evaluateHypothesis(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      conn as any, h({ kind: "unique", columns: ["l_orderkey"] }), columns, loaded.rowCount,
+      conn as any, h({ kind: "unique", table: "lineitem", columns: ["l_orderkey"] }),
+      schema, rowCounts,
     );
     expect(falsified.status).toBe("falsified");
     if (falsified.status !== "falsified") throw new Error("unreachable");

@@ -35,11 +35,11 @@ beforeAll(async () => {
   });
 
   const loaded: LoadedTable = {
+    table: "data",
     label: "fixture.csv",
     format: "csv",
     rowCount: 6,
     columns: described,
-    externalAccessDisabled: false,
     bytes: CSV_FIXTURE.length,
   };
 
@@ -146,9 +146,9 @@ describe("profileTable", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       conn as any,
       {
-        label: "decimals", format: "parquet", rowCount: 3,
+        table: "data", label: "decimals", format: "parquet", rowCount: 3,
         columns: [{ name: "price", sqlType: "DECIMAL(10,2)" }],
-        externalAccessDisabled: false, bytes: 0,
+        bytes: 0,
       },
     );
     const price = decimalProfile.columns[0];

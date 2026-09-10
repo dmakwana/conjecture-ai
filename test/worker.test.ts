@@ -1,18 +1,21 @@
 import { describe, it, expect } from "vitest";
 import app from "@/worker/index";
 import { normalizeHypotheses } from "@/lib/hypotheses/schema";
-import type { TableProfile } from "@/lib/profile/types";
+import type { DatabaseProfile, TableProfile } from "@/lib/profile/types";
 
 const ENV = { ANTHROPIC_API_KEY: "", ENVIRONMENT: "production" };
 
-const profile: TableProfile = {
-  table: "t", format: "parquet", rowCount: 1, columnCount: 1, profileMs: 1,
+const table: TableProfile = {
+  table: "t", label: "t.parquet", format: "parquet",
+  rowCount: 1, columnCount: 1, profileMs: 1,
   columns: [{
     name: "a", ordinal: 0, sqlType: "BIGINT", class: "numeric",
     rowCount: 1, nullCount: 0, nullPct: 0, approxDistinct: 1, distinctPct: 100,
     isCandidateKey: true, numeric: null, temporal: null, boolean: null, string: null,
   }],
 };
+
+const profile: DatabaseProfile = { tables: [table], profileMs: 1 };
 
 const post = (body: unknown, env = ENV) =>
   app.request("/api/hypotheses", {
@@ -78,24 +81,48 @@ describe("normalizeHypotheses", () => {
   it("assigns ids and builds a discriminated union from the flat wire form", () => {
     const out = normalizeHypotheses({
       hypotheses: [
-        { title: "a", rationale: "r", columns: ["x"], severity: "high",
-          kind: "row_predicate", expression: "x > 0", unique_columns: [] },
-        { title: "b", rationale: "r", columns: ["y"], severity: "low",
-          kind: "unique", expression: "", unique_columns: ["y"] },
+        { title: "a", rationale: "r", severity: "high", kind: "row_predicate",
+          table: "t", columns: [], expression: "x > 0",
+          referencesTable: "", referencesColumns: [] },
+        { title: "b", rationale: "r", severity: "low", kind: "unique",
+          table: "t", columns: ["y"], expression: "",
+          referencesTable: "", referencesColumns: [] },
+        { title: "c", rationale: "r", severity: "medium", kind: "references",
+          table: "t", columns: ["fk"], expression: "",
+          referencesTable: "other", referencesColumns: ["pk"] },
       ],
     });
-    expect(out).toHaveLength(2);
-    expect(out[0]).toMatchObject({ id: "h1", check: { kind: "row_predicate", expression: "x > 0" } });
-    expect(out[1]).toMatchObject({ id: "h2", check: { kind: "unique", columns: ["y"] } });
+    expect(out).toHaveLength(3);
+    expect(out[0]).toMatchObject({
+      id: "h1", check: { kind: "row_predicate", table: "t", expression: "x > 0" },
+    });
+    expect(out[1]).toMatchObject({
+      id: "h2", check: { kind: "unique", table: "t", columns: ["y"] },
+    });
+    expect(out[2]).toMatchObject({
+      id: "h3",
+      check: {
+        kind: "references", table: "t", columns: ["fk"],
+        referencesTable: "other", referencesColumns: ["pk"],
+      },
+    });
   });
 
   it("drops entries whose payload does not match their kind", () => {
     const out = normalizeHypotheses({
       hypotheses: [
-        { title: "empty predicate", rationale: "r", columns: [], severity: "low",
-          kind: "row_predicate", expression: "   ", unique_columns: [] },
-        { title: "unique with no columns", rationale: "r", columns: [], severity: "low",
-          kind: "unique", expression: "", unique_columns: [] },
+        { title: "empty predicate", rationale: "r", severity: "low",
+          kind: "row_predicate", table: "t", columns: [], expression: "   ",
+          referencesTable: "", referencesColumns: [] },
+        { title: "unique with no columns", rationale: "r", severity: "low",
+          kind: "unique", table: "t", columns: [], expression: "",
+          referencesTable: "", referencesColumns: [] },
+        { title: "references with mismatched column counts", rationale: "r", severity: "low",
+          kind: "references", table: "t", columns: ["a"], expression: "",
+          referencesTable: "other", referencesColumns: ["a", "b"] },
+        { title: "no table named", rationale: "r", severity: "low",
+          kind: "row_predicate", table: "  ", columns: [], expression: "x > 0",
+          referencesTable: "", referencesColumns: [] },
       ],
     });
     expect(out).toHaveLength(0);

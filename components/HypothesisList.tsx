@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import type { Hypothesis, HypothesisResult, Severity } from "@/lib/hypotheses/schema";
+import { isCrossTable, tablesInCheck } from "@/lib/hypotheses/schema";
 import type { ViolationPreview } from "@/lib/hypotheses/evaluate";
 import { ViolationTable } from "./ViolationTable";
+import { Spinner } from "./Spinner";
 
 export interface HypothesisRow {
   hypothesis: Hypothesis;
   /** null until this check has run. */
   result: HypothesisResult | null;
-  /** True while its query is in flight, so a queued check reads differently
-   *  from one that is actually executing. */
+  /** True while its query is in flight. */
   running: boolean;
 }
 
@@ -20,10 +21,14 @@ const SEVERITY_TONE: Record<Severity, string> = {
   low: "muted",
 };
 
+/** Human-readable form of the check, before it becomes SQL. */
 function checkText(h: Hypothesis): string {
-  return h.check.kind === "unique"
-    ? `UNIQUE (${h.check.columns.join(", ")})`
-    : h.check.expression;
+  const c = h.check;
+  if (c.kind === "unique") return `UNIQUE (${c.columns.join(", ")}) in ${c.table}`;
+  if (c.kind === "references") {
+    return `${c.table}(${c.columns.join(", ")}) → ${c.referencesTable}(${c.referencesColumns.join(", ")})`;
+  }
+  return c.expression;
 }
 
 function Verdict({
@@ -35,8 +40,9 @@ function Verdict({
 }) {
   if (result === null) {
     return running ? (
-      <span className="text-blue-600 dark:text-blue-400 text-xs font-mono">
-        <span className="inline-block animate-pulse">testing…</span>
+      <span className="text-blue-600 dark:text-blue-400 text-xs font-mono inline-flex items-center gap-1.5">
+        <Spinner />
+        running
       </span>
     ) : (
       <span className="muted text-xs font-mono">queued</span>
@@ -66,16 +72,17 @@ export function HypothesisList({
   rows: HypothesisRow[];
   onInspect: (h: Hypothesis) => Promise<ViolationPreview>;
 }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openRows, setOpenRows] = useState<string | null>(null);
+  const [openSql, setOpenSql] = useState<string | null>(null);
   const [preview, setPreview] = useState<ViolationPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  async function toggle(h: Hypothesis) {
-    if (openId === h.id) {
-      setOpenId(null);
+  async function toggleRows(h: Hypothesis) {
+    if (openRows === h.id) {
+      setOpenRows(null);
       return;
     }
-    setOpenId(h.id);
+    setOpenRows(h.id);
     setPreview(null);
     setPreviewError(null);
     try {
@@ -88,7 +95,7 @@ export function HypothesisList({
   return (
     <ul className="panel rounded-md divide-y hairline">
       {rows.map(({ hypothesis, result, running }) => {
-        const falsified = result?.status === "falsified";
+        const cross = isCrossTable(hypothesis.check);
         return (
           <li
             key={hypothesis.id}
@@ -106,37 +113,70 @@ export function HypothesisList({
                   <span className={`text-xs ${SEVERITY_TONE[hypothesis.severity]}`}>
                     {hypothesis.severity}
                   </span>
+                  {cross && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-600/10 text-blue-700 dark:text-blue-300">
+                      cross-table
+                    </span>
+                  )}
+                  <span className="muted text-xs font-mono">
+                    {tablesInCheck(hypothesis.check).join(" · ")}
+                  </span>
                 </div>
+
                 <p className="muted text-sm mt-0.5">{hypothesis.rationale}</p>
                 <code className="block muted text-xs font-mono mt-1 break-all">
                   {checkText(hypothesis)}
                 </code>
 
-                {falsified && result.status === "falsified" && (
-                  <div className="mt-2 text-sm">
-                    <span className="text-red-600 dark:text-red-400">
-                      {result.violations.toLocaleString()} of{" "}
-                      {result.rowCount.toLocaleString()} rows ({result.pct.toFixed(2)}%)
-                    </span>
+                <div className="mt-1.5 text-sm flex items-baseline gap-3 flex-wrap">
+                  {result?.status === "falsified" && (
+                    <>
+                      <span className="text-red-600 dark:text-red-400">
+                        {result.violations.toLocaleString()} of{" "}
+                        {result.rowCount.toLocaleString()} rows ({result.pct.toFixed(2)}%)
+                      </span>
+                      <button
+                        onClick={() => toggleRows(hypothesis)}
+                        className="underline underline-offset-2 hover:no-underline"
+                      >
+                        {openRows === hypothesis.id ? "hide rows" : "view rows"}
+                      </button>
+                    </>
+                  )}
+
+                  {result?.status === "skipped" && (
+                    <span className="muted">Could not evaluate: {result.reason}</span>
+                  )}
+
+                  {result && "ms" in result && (
+                    <span className="muted text-xs font-mono">SQL {result.ms} ms</span>
+                  )}
+                  {result?.sql && (
                     <button
-                      onClick={() => toggle(hypothesis)}
-                      className="ml-3 underline underline-offset-2 hover:no-underline"
+                      onClick={() =>
+                        setOpenSql(openSql === hypothesis.id ? null : hypothesis.id)
+                      }
+                      className="muted text-xs underline underline-offset-2 hover:no-underline"
                     >
-                      {openId === hypothesis.id ? "hide rows" : "view rows"}
+                      {openSql === hypothesis.id ? "hide SQL" : "show SQL"}
                     </button>
-                  </div>
+                  )}
+                </div>
+
+                {openSql === hypothesis.id && result?.sql && (
+                  <pre className="mt-2 text-xs font-mono whitespace-pre-wrap break-words p-3 rounded border hairline">
+                    {result.sql}
+                  </pre>
                 )}
 
-                {result?.status === "skipped" && (
-                  <p className="muted text-sm mt-1">Could not evaluate: {result.reason}</p>
-                )}
-
-                {openId === hypothesis.id && (
+                {openRows === hypothesis.id && (
                   <div className="mt-3">
                     {previewError && (
                       <p className="text-red-600 dark:text-red-400 text-sm">{previewError}</p>
                     )}
-                    {!previewError && !preview && <p className="muted text-sm">Loading rows…</p>}
+                    {!previewError && !preview && (
+                      <p className="muted text-sm">Loading rows…</p>
+                    )}
                     {preview && (
                       <>
                         <p className="muted text-xs mb-1">

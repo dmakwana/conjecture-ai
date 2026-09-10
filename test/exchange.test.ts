@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateHypotheses, MODEL } from "@/worker/hypotheses";
-import type { TableProfile } from "@/lib/profile/types";
+import type { DatabaseProfile, TableProfile } from "@/lib/profile/types";
 
-const profile: TableProfile = {
-  table: "orders", format: "parquet", rowCount: 100, columnCount: 1, profileMs: 5,
+const table: TableProfile = {
+  table: "orders", label: "orders.parquet", format: "parquet",
+  rowCount: 100, columnCount: 1, profileMs: 5,
   columns: [{
     name: "amount", ordinal: 0, sqlType: "DOUBLE", class: "numeric",
     rowCount: 100, nullCount: 0, nullPct: 0, approxDistinct: 90, distinctPct: 90,
@@ -17,10 +18,15 @@ const profile: TableProfile = {
   }],
 };
 
+const profile: DatabaseProfile = { tables: [table], profileMs: 5 };
+
 const MODEL_OUTPUT = {
   hypotheses: [
-    { title: "amount is never negative", rationale: "min is -5", columns: ["amount"],
-      severity: "high", kind: "row_predicate", expression: "amount >= 0", unique_columns: [] },
+    {
+      title: "amount is never negative", rationale: "min is -5", severity: "high",
+      kind: "row_predicate", table: "orders", columns: [], expression: "amount >= 0",
+      referencesTable: "", referencesColumns: [],
+    },
   ],
 };
 
@@ -108,8 +114,8 @@ function exchangeIsMetadataOnly(serialized: string): boolean {
   const parsed = JSON.parse(serialized) as { messages: { content: string }[] };
   const content = parsed.messages[0].content;
   const jsonBlock = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
-  const sent = JSON.parse(jsonBlock) as TableProfile;
-  return sent.columns.every(
+  const sent = JSON.parse(jsonBlock) as DatabaseProfile;
+  return sent.tables.flatMap((t) => t.columns).every(
     (c) => c.string === null || c.string.shapes.every((s) => !/[b-zB-Z0-8]/.test(s.shape.replace(/\{\d+\}/g, ""))),
   );
 }

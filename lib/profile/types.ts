@@ -105,12 +105,21 @@ export const ColumnProfileSchema = z.object({
 });
 
 export const TableProfileSchema = z.object({
+  /** The SQL identifier. This is the name the model is told to use. */
   table: z.string(),
+  /** Original filename or URL. Display only; never referenced in SQL. */
+  label: z.string(),
   format: z.enum(["parquet", "csv", "json"]),
   rowCount: z.number(),
   columnCount: z.number(),
   profileMs: z.number(),
   columns: z.array(ColumnProfileSchema),
+});
+
+/** Every loaded table. This whole object is what crosses the network. */
+export const DatabaseProfileSchema = z.object({
+  tables: z.array(TableProfileSchema),
+  profileMs: z.number(),
 });
 
 export type NumericStats = z.infer<typeof NumericStatsSchema>;
@@ -119,3 +128,4 @@ export type BooleanStats = z.infer<typeof BooleanStatsSchema>;
 export type StringStats = z.infer<typeof StringStatsSchema>;
 export type ColumnProfile = z.infer<typeof ColumnProfileSchema>;
 export type TableProfile = z.infer<typeof TableProfileSchema>;
+export type DatabaseProfile = z.infer<typeof DatabaseProfileSchema>;

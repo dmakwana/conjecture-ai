@@ -1,10 +1,10 @@
 import type * as duckdb from "@duckdb/duckdb-wasm";
 import { asNumber, firstRow, toRows } from "@/lib/arrow";
-import type { LoadedTable } from "@/lib/duckdb/load";
+import type { LoadedDatabase, LoadedTable } from "@/lib/duckdb/load";
 import { aggregateQuery, chunkColumns, classify, shapeQuery, type ColumnSpec } from "./queries";
 import { collapseShape } from "./shapes";
 import { assertNoValues } from "./redaction";
-import type { ColumnProfile, TableProfile } from "./types";
+import type { ColumnProfile, DatabaseProfile, TableProfile } from "./types";
 
 /** Shapes cost one query per column, so only the first N string columns get them. */
 const MAX_SHAPE_COLUMNS = 20;
@@ -47,7 +47,7 @@ export async function profileTable(
   const stats: Row = {};
   let rowCount = loaded.rowCount;
   for (const chunk of chunks) {
-    const row = firstRow<Row>(await conn.query(aggregateQuery(chunk)));
+    const row = firstRow<Row>(await conn.query(aggregateQuery(loaded.table, chunk)));
     if (row) {
       Object.assign(stats, row);
       rowCount = asNumber(row.row_count) ?? rowCount;
@@ -60,7 +60,7 @@ export async function profileTable(
   for (const spec of shapeTargets) {
     try {
       const rows = toRows<{ shape: unknown; n: unknown }>(
-        await conn.query(shapeQuery(spec)),
+        await conn.query(shapeQuery(loaded.table, spec)),
       );
       shapesByColumn.set(
         spec.ordinal,
@@ -170,7 +170,8 @@ export async function profileTable(
   });
 
   const profile: TableProfile = {
-    table: loaded.label,
+    table: loaded.table,
+    label: loaded.label,
     format: loaded.format,
     rowCount,
     columnCount: columns.length,
@@ -180,4 +181,37 @@ export async function profileTable(
 
   // Never let a profile reach the network without passing the redaction check.
   return assertNoValues(profile);
+}
+
+/**
+ * Profile every loaded table. Progress is reported across all of them so a
+ * multi-table load shows one continuous bar rather than restarting per table.
+ */
+export async function profileDatabase(
+  conn: duckdb.AsyncDuckDBConnection,
+  loaded: LoadedDatabase,
+  onProgress?: (done: number, total: number, table: string) => void,
+): Promise<DatabaseProfile> {
+  const started = performance.now();
+  const tables: TableProfile[] = [];
+
+  // Weight each table by its column count so the bar advances evenly.
+  const totalUnits = loaded.tables.reduce((n, t) => n + Math.max(1, t.columns.length), 0);
+  let doneUnits = 0;
+
+  for (const table of loaded.tables) {
+    const units = Math.max(1, table.columns.length);
+    tables.push(
+      await profileTable(conn, table, (done, total) =>
+        onProgress?.(
+          doneUnits + (total === 0 ? units : (done / total) * units),
+          totalUnits,
+          table.table,
+        ),
+      ),
+    );
+    doneUnits += units;
+  }
+
+  return { tables, profileMs: Math.round(performance.now() - started) };
 }

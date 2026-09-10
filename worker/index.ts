@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { TableProfileSchema } from "@/lib/profile/types";
+import { DatabaseProfileSchema } from "@/lib/profile/types";
 import {
   generateHypotheses,
   MODEL,
@@ -72,7 +72,7 @@ app.post("/api/hypotheses", async (c) => {
 
   // Parsing here also strips any key the schema does not declare, so a client
   // cannot smuggle extra fields through to the model.
-  const parsed = TableProfileSchema.safeParse((body as { profile?: unknown })?.profile);
+  const parsed = DatabaseProfileSchema.safeParse((body as { profile?: unknown })?.profile);
   if (!parsed.success) {
     return c.json(
       { error: "Invalid profile.", detail: parsed.error.issues.slice(0, 5) },

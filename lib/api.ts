@@ -1,4 +1,4 @@
-import type { TableProfile } from "@/lib/profile/types";
+import type { DatabaseProfile } from "@/lib/profile/types";
 import type { Exchange, Hypothesis } from "@/lib/hypotheses/schema";
 
 /**
@@ -14,7 +14,7 @@ export interface HypothesesResponse {
 }
 
 export async function requestHypotheses(
-  profile: TableProfile,
+  profile: DatabaseProfile,
   signal?: AbortSignal,
 ): Promise<HypothesesResponse> {
   const res = await fetch(`${API_BASE}/api/hypotheses`, {

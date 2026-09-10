@@ -1,20 +1,31 @@
 import type * as duckdb from "@duckdb/duckdb-wasm";
 import type { SourceFormat } from "@/lib/sources/validate";
 import { asNumber, firstRow, toRows } from "@/lib/arrow";
+import { isSafeTableName } from "./tables";
 
-/** The single table every query runs against. Fixed, so it is never user- or
- *  model-controlled and never needs quoting in generated SQL. */
-export const TABLE = "data";
+export interface SourceInput {
+  /** SQL identifier for this source's table. */
+  table: string;
+  /** Original filename or URL, for display. */
+  label: string;
+  format: SourceFormat;
+  bytes: Uint8Array;
+}
 
 export interface LoadedTable {
-  /** Human-readable source name, for display only. */
+  table: string;
   label: string;
   format: SourceFormat;
   rowCount: number;
   columns: { name: string; sqlType: string }[];
+  bytes: number;
+}
+
+export interface LoadedDatabase {
+  tables: LoadedTable[];
   /** Whether DuckDB accepted the lockdown described in lockDown(). */
   externalAccessDisabled: boolean;
-  bytes: number;
+  loadMs: number;
 }
 
 export interface FetchProgress {
@@ -26,9 +37,9 @@ export interface FetchProgress {
  * Download the whole file with progress.
  *
  * We materialise rather than letting DuckDB range-read the URL lazily. That
- * costs memory on very large files, but it means DuckDB never touches the
- * network, which in turn lets us switch external access off entirely before any
- * model-authored SQL runs. For an in-browser tool that is the right trade.
+ * costs memory on large files, but it means DuckDB never touches the network,
+ * which in turn lets us switch external access off entirely before any
+ * model-authored SQL runs.
  */
 export async function fetchWithProgress(
   url: string,
@@ -75,66 +86,86 @@ function readerFor(format: SourceFormat, file: string): string {
 }
 
 /**
- * Defence in depth behind lib/hypotheses/guard.ts. Once the data is in a table
- * DuckDB has no further need to reach a file or a URL, so we take the
- * capability away. DuckDB does not allow this to be switched back on.
+ * Defence in depth behind lib/hypotheses/guard.ts. Once every source is in a
+ * table DuckDB has no further need to reach a file or a URL, so we take the
+ * capability away. DuckDB does not allow this to be switched back on, which is
+ * exactly why rebuildDatabase re-opens rather than reusing.
  */
 async function lockDown(conn: duckdb.AsyncDuckDBConnection): Promise<boolean> {
   try {
     await conn.query("SET enable_external_access=false");
     return true;
   } catch {
-    // Older builds only accept this at startup. The expression guard is the
-    // primary defence; report the weaker posture rather than pretending.
     return false;
   }
 }
 
-export async function loadIntoDuckDB(
+/**
+ * Rebuild the whole database from the given sources.
+ *
+ * This is deliberately all-or-nothing rather than incremental. `enable_external_access=false`
+ * is global to the database and cannot be undone, so a database that has loaded
+ * one dataset can never read another file; re-opening is the only way back, and
+ * re-opening drops every table. Rebuilding from retained bytes keeps one code
+ * path and leaves the database in the same state — every source present, access
+ * locked down — no matter what order sources were added or removed in.
+ *
+ * The cost is that each source's bytes are retained in memory for as long as it
+ * is loaded. Callers must close any connection before calling, and reconnect
+ * afterwards.
+ */
+export async function rebuildDatabase(
   db: duckdb.AsyncDuckDB,
-  opts: { bytes: Uint8Array; format: SourceFormat; label: string },
-): Promise<LoadedTable> {
-  const file = "source_input";
+  sources: SourceInput[],
+  onProgress?: (done: number, total: number, label: string) => void,
+): Promise<LoadedDatabase> {
+  const started = performance.now();
 
-  // Re-open the database first. `enable_external_access=false` (see lockDown
-  // below) is global to the database and cannot be switched back on, so a
-  // database that has already loaded one dataset can never read another file --
-  // every load after the first failed with "file system operations are disabled
-  // by configuration". Re-opening gives a fresh database with default settings,
-  // and unlike terminating the worker it does not recompile the 34 MiB module.
-  //
-  // Any connection held from a previous dataset is invalidated by this, so
-  // callers must close theirs before calling and reconnect afterwards.
   await db.open({});
-
   await db.dropFiles();
-  await db.registerFileBuffer(file, opts.bytes);
 
   const conn = await db.connect();
   try {
-    await conn.query(
-      `CREATE OR REPLACE TABLE ${TABLE} AS SELECT * FROM ${readerFor(opts.format, file)}`,
-    );
+    const tables: LoadedTable[] = [];
 
-    const described = toRows<{ column_name: string; column_type: string }>(
-      await conn.query(`DESCRIBE ${TABLE}`),
-    );
-    const counted = firstRow<{ n: unknown }>(
-      await conn.query(`SELECT count(*) AS n FROM ${TABLE}`),
-    );
+    for (const [index, source] of sources.entries()) {
+      if (!isSafeTableName(source.table)) {
+        throw new Error(`Unsafe table name: ${source.table}`);
+      }
+      onProgress?.(index, sources.length, source.label);
 
-    // The registered buffer is a second copy of the file; the table owns the
-    // data now, so release it before we start profiling.
-    await db.dropFile(file);
-    const externalAccessDisabled = await lockDown(conn);
+      const file = `source_${index}`;
+      await db.registerFileBuffer(file, source.bytes);
+      await conn.query(
+        `CREATE OR REPLACE TABLE ${source.table} AS SELECT * FROM ${readerFor(source.format, file)}`,
+      );
+      // The registered buffer is a second copy; the table owns the data now.
+      await db.dropFile(file);
+
+      const described = toRows<{ column_name: string; column_type: string }>(
+        await conn.query(`DESCRIBE ${source.table}`),
+      );
+      const counted = firstRow<{ n: unknown }>(
+        await conn.query(`SELECT count(*) AS n FROM ${source.table}`),
+      );
+
+      tables.push({
+        table: source.table,
+        label: source.label,
+        format: source.format,
+        rowCount: asNumber(counted?.n) ?? 0,
+        columns: described.map((d) => ({ name: d.column_name, sqlType: d.column_type })),
+        bytes: source.bytes.byteLength,
+      });
+    }
+
+    onProgress?.(sources.length, sources.length, "");
+    const externalAccessDisabled = sources.length > 0 ? await lockDown(conn) : false;
 
     return {
-      label: opts.label,
-      format: opts.format,
-      rowCount: asNumber(counted?.n) ?? 0,
-      columns: described.map((d) => ({ name: d.column_name, sqlType: d.column_type })),
+      tables,
       externalAccessDisabled,
-      bytes: opts.bytes.byteLength,
+      loadMs: Math.round(performance.now() - started),
     };
   } finally {
     await conn.close();

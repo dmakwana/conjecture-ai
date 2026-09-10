@@ -19,7 +19,7 @@ export const SEVERITIES = ["high", "medium", "low"] as const;
 export const SeveritySchema = z.enum(SEVERITIES);
 export type Severity = z.infer<typeof SeveritySchema>;
 
-export const CHECK_KINDS = ["row_predicate", "unique"] as const;
+export const CHECK_KINDS = ["row_predicate", "unique", "references"] as const;
 
 export const WireHypothesisSchema = z.object({
   title: z
@@ -32,24 +32,38 @@ export const WireHypothesisSchema = z.object({
     .describe(
       "One or two sentences citing the specific profile statistics that motivated this hypothesis.",
     ),
-  columns: z.array(z.string()).describe("Column names this hypothesis concerns."),
   severity: SeveritySchema.describe(
     "How damaging it would be if this turned out to be false.",
   ),
   kind: z
     .enum(CHECK_KINDS)
     .describe(
-      "'row_predicate' for a boolean expression that must hold on every row; 'unique' to assert a column set has no duplicates.",
+      "'row_predicate' for a boolean expression true of every row of one table; 'unique' to assert a column set has no duplicates; 'references' to assert every value in one table appears in another.",
+    ),
+  table: z
+    .string()
+    .describe(
+      "The table this check runs against, exactly as named in the profile. For 'references' this is the table whose values must be found elsewhere.",
+    ),
+  columns: z
+    .array(z.string())
+    .describe(
+      "For kind='unique': the columns that together should be unique. For kind='references': the column(s) in `table` whose values must appear in the referenced table. Empty for 'row_predicate'.",
     ),
   expression: z
     .string()
     .describe(
-      "For kind='row_predicate': a DuckDB boolean expression over this table's columns that must be TRUE for every row, e.g. \"discount >= 0 AND discount <= 1\". Must not contain SELECT, subqueries, semicolons, comments, or any function that reads a file or URL. Empty string when kind='unique'.",
+      "For kind='row_predicate': a DuckDB boolean expression over `table`'s columns that must be TRUE for every row, e.g. \"discount >= 0 AND discount <= 1\". Must not contain SELECT, subqueries, semicolons, comments, or any function that reads a file or URL. Empty string for other kinds.",
     ),
-  unique_columns: z
+  referencesTable: z
+    .string()
+    .describe(
+      "For kind='references': the table that must contain the values. Empty string for other kinds.",
+    ),
+  referencesColumns: z
     .array(z.string())
     .describe(
-      "For kind='unique': the columns that together should be unique. Empty array when kind='row_predicate'.",
+      "For kind='references': the column(s) in referencesTable to match against, in the same order as `columns`. Empty for other kinds.",
     ),
 });
 
@@ -63,23 +77,43 @@ export type WireHypotheses = z.infer<typeof WireHypothesesSchema>;
 /* ---------------------------------------------------------------- app types */
 
 export type Check =
-  | { kind: "row_predicate"; expression: string }
-  | { kind: "unique"; columns: string[] };
+  | { kind: "row_predicate"; table: string; expression: string }
+  | { kind: "unique"; table: string; columns: string[] }
+  | {
+      kind: "references";
+      table: string;
+      columns: string[];
+      referencesTable: string;
+      referencesColumns: string[];
+    };
 
 export interface Hypothesis {
   id: string;
   title: string;
   rationale: string;
-  columns: string[];
   severity: Severity;
   check: Check;
 }
 
+/** Every table a check touches, for display and validation. */
+export function tablesInCheck(check: Check): string[] {
+  return check.kind === "references"
+    ? [check.table, check.referencesTable]
+    : [check.table];
+}
+
+export function isCrossTable(check: Check): boolean {
+  return check.kind === "references" && check.table !== check.referencesTable;
+}
+
 /** Outcome of evaluating one hypothesis locally against DuckDB. */
 export type HypothesisResult =
-  | { status: "holds"; violations: 0; rowCount: number; ms: number }
-  | { status: "falsified"; violations: number; rowCount: number; pct: number; ms: number }
-  | { status: "skipped"; reason: string };
+  | { status: "holds"; violations: 0; rowCount: number; ms: number; sql: string }
+  | {
+      status: "falsified";
+      violations: number; rowCount: number; pct: number; ms: number; sql: string;
+    }
+  | { status: "skipped"; reason: string; sql?: string };
 
 /**
  * Turn the flat wire form into the discriminated union, dropping anything
@@ -93,19 +127,41 @@ export function normalizeHypotheses(wire: WireHypotheses): Hypothesis[] {
       id: `h${i + 1}`,
       title: h.title.trim(),
       rationale: h.rationale.trim(),
-      columns: h.columns,
       severity: h.severity,
     };
+    const table = h.table.trim();
+    if (table === "") return;
+
     if (h.kind === "unique") {
-      if (h.unique_columns.length === 0) return;
-      out.push({ ...base, check: { kind: "unique", columns: h.unique_columns } });
-    } else {
-      if (h.expression.trim() === "") return;
+      if (h.columns.length === 0) return;
+      out.push({ ...base, check: { kind: "unique", table, columns: h.columns } });
+      return;
+    }
+
+    if (h.kind === "references") {
+      const refTable = h.referencesTable.trim();
+      // A containment check needs both sides, and the same number of columns on
+      // each, or the generated join would be meaningless.
+      if (refTable === "" || h.columns.length === 0) return;
+      if (h.columns.length !== h.referencesColumns.length) return;
       out.push({
         ...base,
-        check: { kind: "row_predicate", expression: h.expression.trim() },
+        check: {
+          kind: "references",
+          table,
+          columns: h.columns,
+          referencesTable: refTable,
+          referencesColumns: h.referencesColumns,
+        },
       });
+      return;
     }
+
+    if (h.expression.trim() === "") return;
+    out.push({
+      ...base,
+      check: { kind: "row_predicate", table, expression: h.expression.trim() },
+    });
   });
   return out;
 }
@@ -113,8 +169,8 @@ export function normalizeHypotheses(wire: WireHypotheses): Hypothesis[] {
 /* ----------------------------------------------------------------- exchange */
 
 /**
- * A verbatim record of the single exchange with Claude, returned to the client
- * so the user can read exactly what was asked and exactly what came back.
+ * A verbatim record of the single exchange with the model, returned to the
+ * client so the user can read exactly what was asked and what came back.
  *
  * `system` and `userMessage` are the actual strings sent, not a reconstruction —
  * the whole point of showing them is that they are the real thing.
@@ -130,9 +186,9 @@ export interface Exchange {
   inputTokens: number;
   outputTokens: number;
   /**
-   * Number of HTTP requests actually made to Anthropic. This is measured, not
-   * assumed: the design makes exactly one request per run, and anything above 1
-   * means the SDK retried a transient failure (the same single query, resent).
+   * Number of HTTP requests actually made. Measured, not assumed: the design
+   * makes exactly one request per run, and anything above 1 means the SDK
+   * retried a transient failure (the same single query, resent).
    */
   httpAttempts: number;
   /** Hypotheses returned before any were dropped as malformed. */

@@ -1,6 +1,5 @@
 import { quoteIdent } from "@/lib/hypotheses/guard";
 import type { ColumnClass } from "./types";
-import { TABLE } from "@/lib/duckdb/load";
 
 export interface ColumnSpec {
   name: string;
@@ -144,9 +143,9 @@ export function chunkColumns(columns: ColumnSpec[], budget = 180): ColumnSpec[][
   return chunks;
 }
 
-export function aggregateQuery(chunk: ColumnSpec[]): string {
+export function aggregateQuery(table: string, chunk: ColumnSpec[]): string {
   const parts = ["count(*) AS row_count", ...chunk.flatMap(columnAggregates)];
-  return `SELECT ${parts.join(", ")} FROM ${TABLE}`;
+  return `SELECT ${parts.join(", ")} FROM ${table}`;
 }
 
 /**
@@ -157,7 +156,12 @@ export function aggregateQuery(chunk: ColumnSpec[]): string {
  * what makes a shape useful for spotting format drift. Sampled, because a
  * GROUP BY over every row of a wide table is not worth the wait.
  */
-export function shapeQuery(col: ColumnSpec, sampleRows = 50_000, limit = 8): string {
+export function shapeQuery(
+  table: string,
+  col: ColumnSpec,
+  sampleRows = 50_000,
+  limit = 8,
+): string {
   const c = quoteIdent(col.name);
   const masked =
     `regexp_replace(regexp_replace(regexp_replace(` +
@@ -165,7 +169,7 @@ export function shapeQuery(col: ColumnSpec, sampleRows = 50_000, limit = 8): str
   return (
     `SELECT shape, count(*) AS n FROM (` +
     `SELECT ${masked} AS shape FROM (` +
-    `SELECT ${c} FROM ${TABLE} WHERE ${c} IS NOT NULL` +
+    `SELECT ${c} FROM ${table} WHERE ${c} IS NOT NULL` +
     `) USING SAMPLE ${sampleRows} ROWS` +
     `) GROUP BY shape ORDER BY n DESC, shape LIMIT ${limit}`
   );
