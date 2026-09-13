@@ -19,8 +19,35 @@ cp .dev.vars.example .dev.vars     # add your Anthropic API key
 npm run dev                        # next on :3000, worker on :8787
 ```
 
-Open http://localhost:3000, paste a CORS-enabled Parquet/CSV/JSON URL (there is a sample link in
-the UI), or choose a local file.
+Open http://localhost:3000. It lands in **demo mode** with the Commerce dataset pre-selected —
+one click loads it. Switch to **Your own data** to point at a CORS-enabled Parquet/CSV/JSON URL or
+drop your own files.
+
+## Demo datasets
+
+Three datasets ship in `public/data` and are listed in `lib/demo.ts`. They are same-origin and
+known-good, so they skip the CORS and format checks that user-supplied URLs go through.
+
+| | Tables | Rows | What it is good at showing |
+|---|---|---|---|
+| **Commerce** (default) | 8 | 258k | Referential integrity across orders, items, payments and refunds — and whether the denormalised `orders_flat` still agrees with the tables it was built from |
+| **Flights** | 1 | 91k | Arithmetic that should reconcile: delay causes summing to the total, elapsed time against air time plus taxiing, what a cancelled flight may record |
+| **Power** | 1 | 89k | Sensor and pipeline faults: negative sub-meter readings, implausible draw, sub-meters exceeding the total |
+
+Commerce is the default because it is the multi-table one, and cross-table relationships are
+exactly what a single-table profile cannot reveal.
+
+The datasets are seeded with real defects, so the demo does not just report that everything is
+fine. A live run over Commerce found 100 orders referencing a customer that does not exist, 306
+duplicate `(order_id, line_number)` pairs, 143 rows where `order_total` does not equal
+`items_subtotal + shipping + tax - discount`, and 40 orders paid before they were created.
+
+Loading takes one click rather than happening automatically: the engine plus Commerce is tens of
+megabytes, and downloading that unasked would be rude on a metered connection.
+
+`test/demo.test.ts` asserts every manifest path exists on disk, stays under Cloudflare's 25 MiB
+per-file asset limit, and uses safe unique table names — a typo there would otherwise 404 at
+runtime with no other warning.
 
 ## How the privacy guarantee works
 
@@ -94,6 +121,7 @@ lazily, so very large files are slow. The UI warns above 500 MB.
 ```
 app/                    one page, client-side
 components/             checklist, profile panel, hypothesis list, violation table
+lib/demo.ts             the three bundled datasets and their manifests
 lib/sources/validate.ts URL preflight: CORS, ranges, size, magic-byte format sniffing
 lib/duckdb/             bundles (swappable CDN → R2), client, loader + lockdown
 lib/profile/            SQL builders, orchestration, shape masking, redaction
@@ -192,7 +220,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-62 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+81 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 

@@ -18,7 +18,9 @@ import { ProfilePanel } from "@/components/ProfilePanel";
 import { HypothesisList, type HypothesisRow } from "@/components/HypothesisList";
 import { ExchangePanel } from "@/components/ExchangePanel";
 import { SourceManager, type SourceSummary } from "@/components/SourceManager";
+import { DemoPicker } from "@/components/DemoPicker";
 import { ThinkingDots } from "@/components/Spinner";
+import { DEFAULT_DEMO, demoById, type DemoId } from "@/lib/demo";
 
 interface Source extends SourceInput {
   id: string;
@@ -26,7 +28,13 @@ interface Source extends SourceInput {
 
 type Phase = "idle" | "adding" | "rebuilding" | "ready" | "thinking" | "testing";
 
+/** Demo is the landing mode: a curated dataset beats an empty box. */
+type Mode = "demo" | "own";
+
 export default function Page() {
+  const [mode, setMode] = useState<Mode>("demo");
+  const [demoId, setDemoId] = useState<DemoId>(DEFAULT_DEMO);
+  const [loadedDemo, setLoadedDemo] = useState<DemoId | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [status, setStatus] = useState("");
@@ -104,6 +112,61 @@ export default function Page() {
     setPhase("ready");
     setStatus("");
   }, []);
+
+  /**
+   * Load a bundled dataset. These are same-origin and known-good, so they skip
+   * the CORS/format validation that user-supplied URLs need.
+   */
+  const loadDemo = useCallback(
+    async (id: DemoId) => {
+      setReport(null);
+      setError(null);
+      setLoadedDemo(null);
+      try {
+        setPhase("adding");
+        const dataset = demoById(id);
+        const { fetchWithProgress } = await import("@/lib/duckdb/load");
+
+        const next: Source[] = [];
+        for (const [i, file] of dataset.files.entries()) {
+          const label = file.path.split("/").pop() ?? file.table;
+          setStatus(
+            `Downloading ${dataset.name}: ${label} (${i + 1} of ${dataset.files.length})…`,
+          );
+          const bytes = await fetchWithProgress(file.path);
+          next.push({
+            id: `${id}:${file.table}`,
+            table: file.table,
+            label,
+            format: "parquet",
+            bytes,
+          });
+        }
+
+        setSources(next);
+        await rebuild(next);
+        setLoadedDemo(id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase("idle");
+        setStatus("");
+      }
+    },
+    [rebuild],
+  );
+
+  const switchMode = useCallback(
+    async (next: Mode) => {
+      if (next === mode) return;
+      setMode(next);
+      setError(null);
+      setReport(null);
+      setLoadedDemo(null);
+      setSources([]);
+      await rebuild([]);
+    },
+    [mode, rebuild],
+  );
 
   const addUrl = useCallback(
     async (url: string) => {
@@ -203,6 +266,7 @@ export default function Page() {
     async (id: string) => {
       const next = sources.filter((s) => s.id !== id);
       setSources(next);
+      setLoadedDemo(null);
       await rebuild(next);
     },
     [sources, rebuild],
@@ -283,14 +347,41 @@ export default function Page() {
         </p>
       </header>
 
-      <SourceManager
-        sources={summaries}
-        busy={busy}
-        report={report}
-        onAddUrl={addUrl}
-        onAddFiles={addFiles}
-        onRemove={removeSource}
-      />
+      <nav className="flex gap-1 text-sm" role="tablist">
+        {(["demo", "own"] as Mode[]).map((m) => (
+          <button
+            key={m}
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => switchMode(m)}
+            disabled={busy}
+            className={`px-3 py-1.5 rounded-md transition disabled:opacity-50 ${
+              mode === m ? "panel font-medium" : "muted hover:underline"
+            }`}
+          >
+            {m === "demo" ? "Demo data" : "Your own data"}
+          </button>
+        ))}
+      </nav>
+
+      {mode === "demo" ? (
+        <DemoPicker
+          selected={demoId}
+          busy={busy}
+          loadedId={loadedDemo}
+          onSelect={setDemoId}
+          onLoad={loadDemo}
+        />
+      ) : (
+        <SourceManager
+          sources={summaries}
+          busy={busy}
+          report={report}
+          onAddUrl={addUrl}
+          onAddFiles={addFiles}
+          onRemove={removeSource}
+        />
+      )}
 
       {status && <p className="muted text-sm font-mono">{status}</p>}
 
