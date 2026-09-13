@@ -135,7 +135,18 @@ export async function rebuildDatabase(
       onProgress?.(index, sources.length, source.label);
 
       const file = `source_${index}`;
-      await db.registerFileBuffer(file, source.bytes);
+      // Register a COPY, never the retained bytes.
+      //
+      // AsyncDuckDB posts the buffer to its worker with the ArrayBuffer in the
+      // transfer list, which detaches it on this side. Handing it `source.bytes`
+      // directly would leave that source permanently unusable, so the next
+      // rebuild — triggered by adding or removing any source — would fail with
+      // "An ArrayBuffer is detached and could not be cloned". Rebuilding from
+      // retained bytes is the whole design, so the copy is not optional.
+      //
+      // The copy is transient: it is detached by the transfer and the wasm-side
+      // file is dropped again below, so only one extra copy exists at a time.
+      await db.registerFileBuffer(file, new Uint8Array(source.bytes));
       await conn.query(
         `CREATE OR REPLACE TABLE ${source.table} AS SELECT * FROM ${readerFor(source.format, file)}`,
       );

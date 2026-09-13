@@ -50,6 +50,34 @@ describe("rebuilding across loads", () => {
     conn.close();
   }, 180_000);
 
+  it("keeps every source's bytes reusable across rebuilds", async () => {
+    // Regression: registerFileBuffer transfers the ArrayBuffer to the DuckDB
+    // worker, detaching it on this side. Rebuilding from retained bytes is the
+    // whole design, so handing over the retained buffer made the second load
+    // fail with "An ArrayBuffer is detached and could not be cloned" — exactly
+    // the state of adding a source when data is already loaded.
+    const testDb = await createTestDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = testDb.db as any;
+
+    const a = { table: "a", label: "a.csv", format: "csv" as const, bytes: encode(CSV_FIXTURE) };
+    const b = { table: "b", label: "b.csv", format: "csv" as const, bytes: encode(SECOND_DATASET) };
+
+    await rebuildDatabase(db, [a]);
+    expect(a.bytes.byteLength, "first source was detached").toBe(CSV_FIXTURE.length);
+
+    // Add a second while the first is loaded — the reported failure.
+    await rebuildDatabase(db, [a, b]);
+    expect(a.bytes.byteLength).toBe(CSV_FIXTURE.length);
+    expect(b.bytes.byteLength).toBe(SECOND_DATASET.length);
+
+    // And repeatedly, since a session adds and removes many times.
+    for (let i = 0; i < 3; i++) {
+      const out = await rebuildDatabase(db, [a, b]);
+      expect(out.tables.map((t) => t.rowCount)).toEqual([6, 3]);
+    }
+  }, 180_000);
+
   it("leaves no table behind when a source is removed", async () => {
     const testDb = await createTestDb();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

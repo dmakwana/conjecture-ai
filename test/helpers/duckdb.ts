@@ -37,8 +37,15 @@ export async function createTestDb(): Promise<TestDb> {
     reset: async () => bindings.reset(),
     dropFiles: async () => bindings.dropFiles(),
     dropFile: async (name: string) => bindings.dropFile(name),
-    registerFileBuffer: async (name: string, buffer: Uint8Array) =>
-      bindings.registerFileBuffer(name, buffer),
+    registerFileBuffer: async (name: string, buffer: Uint8Array) => {
+      bindings.registerFileBuffer(name, buffer);
+      // In the browser, AsyncDuckDB posts the buffer to its worker with the
+      // ArrayBuffer in the transfer list, which DETACHES it on this side. The
+      // Node bindings copy straight into wasm memory and never do that, so
+      // without this the harness silently tolerates reusing a registered
+      // buffer and tests miss a bug that breaks every browser rebuild.
+      structuredClone(buffer.buffer, { transfer: [buffer.buffer] });
+    },
     connect: async () => {
       const c = bindings.connect();
       return { query: async (sql: string) => c.query(sql), close: async () => c.close() };

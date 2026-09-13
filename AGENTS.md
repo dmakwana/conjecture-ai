@@ -29,4 +29,10 @@ Practical notes:
   error. Cast to BIGINT or DOUBLE in SQL; `asNumber` in `lib/arrow.ts` is the backstop.
 - Import `@duckdb/duckdb-wasm` dynamically from client code. A static import breaks the static
   export build.
+- `registerFileBuffer` TRANSFERS the ArrayBuffer to the DuckDB worker, detaching it on the main
+  thread. Rebuilding from retained bytes is the design, so always register a copy
+  (`new Uint8Array(bytes)`); handing over the retained buffer makes the next rebuild fail with
+  "An ArrayBuffer is detached and could not be cloned". `insertArrowFromIPCStream` transfers too.
+  The Node bindings copy instead of transferring, so `test/helpers/duckdb.ts` detaches explicitly
+  to keep the harness honest about this.
 - Tests use the Node build of duckdb-wasm, so they run the same SQL the browser does.
