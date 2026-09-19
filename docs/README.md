@@ -24,6 +24,19 @@ Two notes on reading it:
 - It ends a moment before the commit that added it, since a session cannot
   contain its own conclusion.
 
+## Published as HTML
+
+`public/claude-code-transcript/` is the same session rendered as browsable pages, linked from the
+app and served at `/claude-code-transcript`. Generated with
+[simonw/claude-code-transcripts](https://github.com/simonw/claude-code-transcripts):
+
+```bash
+uvx claude-code-transcripts json docs/claude-session.jsonl -o public/claude-code-transcript
+```
+
+Re-run that after replacing the JSONL, and re-check for credentials: the generator renders whatever
+the session contained. `test/transcript.test.ts` does that check on every run.
+
 Checked before committing: no API key appears anywhere in it. The longest
 `sk-`-prefixed token in the file is 21 characters, where a real Anthropic key is
 over a hundred, so the handful of matches are documentation fragments rather

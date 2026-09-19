@@ -15,6 +15,9 @@ URLs and files → validate → load into DuckDB → profile → ask the AI → 
                                                             └── verdicts ┘   (up to 3 rounds)
 ```
 
+The [Claude Code transcript](https://conjecture-ai.com/claude-code-transcript/) that built this is
+published alongside it: 39 prompts over 8 pages, including the dead ends.
+
 ## Quick start
 
 ```bash

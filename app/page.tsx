@@ -450,6 +450,16 @@ export default function Page() {
           your system. Dig deeper with subsequent rounds of invariant checks.
           All within the browser. Formats supported: parquet, csv, json.
         </p>
+        <p className="muted text-xs mt-1.5">
+          {/* A static export under public/, not a Next route, so a plain anchor
+              rather than <Link>, which would try to client-side route to it. */}
+          <a
+            href="/claude-code-transcript/"
+            className="underline underline-offset-2 hover:no-underline"
+          >
+            Read the Claude Code transcript that built this
+          </a>
+        </p>
       </header>
 
       <nav className="flex gap-1 text-sm" role="tablist">

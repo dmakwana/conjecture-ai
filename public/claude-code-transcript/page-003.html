@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code transcript - page 3</title>
+    <style>
+:root { --bg-color: #f5f5f5; --card-bg: #ffffff; --user-bg: #e3f2fd; --user-border: #1976d2; --assistant-bg: #f5f5f5; --assistant-border: #9e9e9e; --thinking-bg: #fff8e1; --thinking-border: #ffc107; --thinking-text: #666; --tool-bg: #f3e5f5; --tool-border: #9c27b0; --tool-result-bg: #e8f5e9; --tool-error-bg: #ffebee; --text-color: #212121; --text-muted: #757575; --code-bg: #263238; --code-text: #aed581; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-color); color: var(--text-color); margin: 0; padding: 16px; line-height: 1.6; }
+.container { max-width: 800px; margin: 0 auto; }
+h1 { font-size: 1.5rem; margin-bottom: 24px; padding-bottom: 8px; border-bottom: 2px solid var(--user-border); }
+.header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 2px solid var(--user-border); padding-bottom: 8px; margin-bottom: 24px; }
+.header-row h1 { border-bottom: none; padding-bottom: 0; margin-bottom: 0; flex: 1; min-width: 200px; }
+.message { margin-bottom: 16px; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.message.user { background: var(--user-bg); border-left: 4px solid var(--user-border); }
+.message.assistant { background: var(--card-bg); border-left: 4px solid var(--assistant-border); }
+.message.tool-reply { background: #fff8e1; border-left: 4px solid #ff9800; }
+.tool-reply .role-label { color: #e65100; }
+.tool-reply .tool-result { background: transparent; padding: 0; margin: 0; }
+.tool-reply .tool-result .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, #fff8e1); }
+.message-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(0,0,0,0.03); font-size: 0.85rem; }
+.role-label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.user .role-label { color: var(--user-border); }
+time { color: var(--text-muted); font-size: 0.8rem; }
+.timestamp-link { color: inherit; text-decoration: none; }
+.timestamp-link:hover { text-decoration: underline; }
+.message:target { animation: highlight 2s ease-out; }
+@keyframes highlight { 0% { background-color: rgba(25, 118, 210, 0.2); } 100% { background-color: transparent; } }
+.message-content { padding: 16px; }
+.message-content p { margin: 0 0 12px 0; }
+.message-content p:last-child { margin-bottom: 0; }
+.thinking { background: var(--thinking-bg); border: 1px solid var(--thinking-border); border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 0.9rem; color: var(--thinking-text); }
+.thinking-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #f57c00; margin-bottom: 8px; }
+.thinking p { margin: 8px 0; }
+.assistant-text { margin: 8px 0; }
+.tool-use { background: var(--tool-bg); border: 1px solid var(--tool-border); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.tool-header { font-weight: 600; color: var(--tool-border); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.tool-icon { font-size: 1.1rem; }
+.tool-description { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; font-style: italic; }
+.tool-result { background: var(--tool-result-bg); border-radius: 8px; padding: 12px; margin: 12px 0; }
+.tool-result.tool-error { background: var(--tool-error-bg); }
+.file-tool { border-radius: 8px; padding: 12px; margin: 12px 0; }
+.write-tool { background: linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%); border: 1px solid #4caf50; }
+.edit-tool { background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%); border: 1px solid #ff9800; }
+.file-tool-header { font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.write-header { color: #2e7d32; }
+.edit-header { color: #e65100; }
+.file-tool-icon { font-size: 1rem; }
+.file-tool-path { font-family: monospace; background: rgba(0,0,0,0.08); padding: 2px 8px; border-radius: 4px; }
+.file-tool-fullpath { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; word-break: break-all; }
+.file-content { margin: 0; }
+.edit-section { display: flex; margin: 4px 0; border-radius: 4px; overflow: hidden; }
+.edit-label { padding: 8px 12px; font-weight: bold; font-family: monospace; display: flex; align-items: flex-start; }
+.edit-old { background: #fce4ec; }
+.edit-old .edit-label { color: #b71c1c; background: #f8bbd9; }
+.edit-old .edit-content { color: #880e4f; }
+.edit-new { background: #e8f5e9; }
+.edit-new .edit-label { color: #1b5e20; background: #a5d6a7; }
+.edit-new .edit-content { color: #1b5e20; }
+.edit-content { margin: 0; flex: 1; background: transparent; font-size: 0.85rem; }
+.edit-replace-all { font-size: 0.75rem; font-weight: normal; color: var(--text-muted); }
+.write-tool .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, #e6f4ea); }
+.edit-tool .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, #fff0e5); }
+.todo-list { background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border: 1px solid #81c784; border-radius: 8px; padding: 12px; margin: 12px 0; }
+.todo-header { font-weight: 600; color: #2e7d32; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.todo-items { list-style: none; margin: 0; padding: 0; }
+.todo-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 0.9rem; }
+.todo-item:last-child { border-bottom: none; }
+.todo-icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 50%; }
+.todo-completed .todo-icon { color: #2e7d32; background: rgba(46, 125, 50, 0.15); }
+.todo-completed .todo-content { color: #558b2f; text-decoration: line-through; }
+.todo-in-progress .todo-icon { color: #f57c00; background: rgba(245, 124, 0, 0.15); }
+.todo-in-progress .todo-content { color: #e65100; font-weight: 500; }
+.todo-pending .todo-icon { color: #757575; background: rgba(0,0,0,0.05); }
+.todo-pending .todo-content { color: #616161; }
+pre { background: var(--code-bg); color: var(--code-text); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 8px 0; white-space: pre-wrap; word-wrap: break-word; }
+pre.json { color: #e0e0e0; }
+code { background: rgba(0,0,0,0.08); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+pre code { background: none; padding: 0; }
+.user-content { margin: 0; }
+.truncatable { position: relative; }
+.truncatable.truncated .truncatable-content { max-height: 200px; overflow: hidden; }
+.truncatable.truncated::after { content: ''; position: absolute; bottom: 32px; left: 0; right: 0; height: 60px; background: linear-gradient(to bottom, transparent, var(--card-bg)); pointer-events: none; }
+.message.user .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, var(--user-bg)); }
+.message.tool-reply .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, #fff8e1); }
+.tool-use .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, var(--tool-bg)); }
+.tool-result .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, var(--tool-result-bg)); }
+.expand-btn { display: none; width: 100%; padding: 8px 16px; margin-top: 4px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); }
+.expand-btn:hover { background: rgba(0,0,0,0.1); }
+.truncatable.truncated .expand-btn, .truncatable.expanded .expand-btn { display: block; }
+.pagination { display: flex; justify-content: center; gap: 8px; margin: 24px 0; flex-wrap: wrap; }
+.pagination a, .pagination span { padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; }
+.pagination a { background: var(--card-bg); color: var(--user-border); border: 1px solid var(--user-border); }
+.pagination a:hover { background: var(--user-bg); }
+.pagination .current { background: var(--user-border); color: white; }
+.pagination .disabled { color: var(--text-muted); border: 1px solid #ddd; }
+.pagination .index-link { background: var(--user-border); color: white; }
+details.continuation { margin-bottom: 16px; }
+details.continuation summary { cursor: pointer; padding: 12px 16px; background: var(--user-bg); border-left: 4px solid var(--user-border); border-radius: 12px; font-weight: 500; color: var(--text-muted); }
+details.continuation summary:hover { background: rgba(25, 118, 210, 0.15); }
+details.continuation[open] summary { border-radius: 12px 12px 0 0; margin-bottom: 0; }
+.index-item { margin-bottom: 16px; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); background: var(--user-bg); border-left: 4px solid var(--user-border); }
+.index-item a { display: block; text-decoration: none; color: inherit; }
+.index-item a:hover { background: rgba(25, 118, 210, 0.1); }
+.index-item-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; background: rgba(0,0,0,0.03); font-size: 0.85rem; }
+.index-item-number { font-weight: 600; color: var(--user-border); }
+.index-item-content { padding: 16px; }
+.index-item-stats { padding: 8px 16px 12px 32px; font-size: 0.85rem; color: var(--text-muted); border-top: 1px solid rgba(0,0,0,0.06); }
+.index-item-commit { margin-top: 6px; padding: 4px 8px; background: #fff3e0; border-radius: 4px; font-size: 0.85rem; color: #e65100; }
+.index-item-commit code { background: rgba(0,0,0,0.08); padding: 1px 4px; border-radius: 3px; font-size: 0.8rem; margin-right: 6px; }
+.commit-card { margin: 8px 0; padding: 10px 14px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 6px; }
+.commit-card a { text-decoration: none; color: #5d4037; display: block; }
+.commit-card a:hover { color: #e65100; }
+.commit-card-hash { font-family: monospace; color: #e65100; font-weight: 600; margin-right: 8px; }
+.index-commit { margin-bottom: 12px; padding: 10px 16px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.index-commit a { display: block; text-decoration: none; color: inherit; }
+.index-commit a:hover { background: rgba(255, 152, 0, 0.1); margin: -10px -16px; padding: 10px 16px; border-radius: 8px; }
+.index-commit-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 4px; }
+.index-commit-hash { font-family: monospace; color: #e65100; font-weight: 600; }
+.index-commit-msg { color: #5d4037; }
+.index-item-long-text { margin-top: 8px; padding: 12px; background: var(--card-bg); border-radius: 8px; border-left: 3px solid var(--assistant-border); }
+.index-item-long-text .truncatable.truncated::after { background: linear-gradient(to bottom, transparent, var(--card-bg)); }
+.index-item-long-text-content { color: var(--text-color); }
+#search-box { display: none; align-items: center; gap: 8px; }
+#search-box input { padding: 6px 12px; border: 1px solid var(--assistant-border); border-radius: 6px; font-size: 16px; width: 180px; }
+#search-box button, #modal-search-btn, #modal-close-btn { background: var(--user-border); color: white; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#search-box button:hover, #modal-search-btn:hover { background: #1565c0; }
+#modal-close-btn { background: var(--text-muted); margin-left: 8px; }
+#modal-close-btn:hover { background: #616161; }
+#search-modal[open] { border: none; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.2); padding: 0; width: 90vw; max-width: 900px; height: 80vh; max-height: 80vh; display: flex; flex-direction: column; }
+#search-modal::backdrop { background: rgba(0,0,0,0.5); }
+.search-modal-header { display: flex; align-items: center; gap: 8px; padding: 16px; border-bottom: 1px solid var(--assistant-border); background: var(--bg-color); border-radius: 12px 12px 0 0; }
+.search-modal-header input { flex: 1; padding: 8px 12px; border: 1px solid var(--assistant-border); border-radius: 6px; font-size: 16px; }
+#search-status { padding: 8px 16px; font-size: 0.85rem; color: var(--text-muted); border-bottom: 1px solid rgba(0,0,0,0.06); }
+#search-results { flex: 1; overflow-y: auto; padding: 16px; }
+.search-result { margin-bottom: 16px; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.search-result a { display: block; text-decoration: none; color: inherit; }
+.search-result a:hover { background: rgba(25, 118, 210, 0.05); }
+.search-result-page { padding: 6px 12px; background: rgba(0,0,0,0.03); font-size: 0.8rem; color: var(--text-muted); border-bottom: 1px solid rgba(0,0,0,0.06); }
+.search-result-content { padding: 12px; }
+.search-result mark { background: #fff59d; padding: 1px 2px; border-radius: 2px; }
+@media (max-width: 600px) { body { padding: 8px; } .message, .index-item { border-radius: 8px; } .message-content, .index-item-content { padding: 12px; } pre { font-size: 0.8rem; padding: 8px; } #search-box input { width: 120px; } #search-modal[open] { width: 95vw; height: 90vh; } }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1><a href="index.html" style="color: inherit; text-decoration: none;">Claude Code transcript</a> - page 3/8</h1>
+        
+
+<div class="pagination">
+<a href="index.html" class="index-link">Index</a>
+<a href="page-002.html">&larr; Prev</a>
+<a href="page-001.html">1</a>
+<a href="page-002.html">2</a>
+<span class="current">3</span>
+<a href="page-004.html">4</a>
+<a href="page-005.html">5</a>
+<a href="page-006.html">6</a>
+<a href="page-007.html">7</a>
+<a href="page-008.html">8</a>
+<a href="page-004.html">Next &rarr;</a>
+</div>
+
+        
+<div class="message user" id="msg-2026-09-08T01-25-33-704Z"><div class="message-header"><span class="role-label">User</span><a href="#msg-2026-09-08T01-25-33-704Z" class="timestamp-link"><time datetime="2026-09-08T01:25:33.704Z" data-timestamp="2026-09-08T01:25:33.704Z">2026-09-08T01:25:33.704Z</time></a></div><div class="message-content">
+<div class="user-content"><p>Update the website so it's not discoverable by search engines or AI</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-25-58-779Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-25-58-779Z" class="timestamp-link"><time datetime="2026-09-08T01:25:58.779Z" data-timestamp="2026-09-08T01:25:58.779Z">2026-09-08T01:25:58.779Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-00-243Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-00-243Z" class="timestamp-link"><time datetime="2026-09-08T01:26:00.243Z" data-timestamp="2026-09-08T01:26:00.243Z">2026-09-08T01:26:00.243Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Worth being direct up front: <code>robots.txt</code> and meta tags are <em>requests</em>, honored voluntarily. The only thing that actually stops a crawler is Cloudflare Access, which you're already planning to enable. I'll add all the voluntary layers properly, and say clearly which is which.</p>
+<p>First, let me confirm how headers work with Workers static assets rather than assume:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-01-657Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-01-657Z" class="timestamp-link"><time datetime="2026-09-08T01:26:01.657Z" data-timestamp="2026-09-08T01:26:01.657Z">2026-09-08T01:26:01.657Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_0129K7k9s6dU4UAjAAsdiWsS">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Check _headers support for Workers static assets</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/.claude/skills/cloudflare/references/static-assets &amp;&amp; grep -rn &#34;_headers\|X-Robots\|headers file&#34; *.md | head -20</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-02-770Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-02-770Z" class="timestamp-link"><time datetime="2026-09-08T01:26:02.770Z" data-timestamp="2026-09-08T01:26:02.770Z">2026-09-08T01:26:02.770Z</time></a></div><div class="message-content">
+<div class="tool-use" data-tool-id="toolu_016uDQ7EBQRVPFudsAKkTZWr"><div class="tool-header"><span class="tool-icon">⚙</span> WebFetch</div><div class="truncatable"><div class="truncatable-content"><pre class="json">{
+  &#34;url&#34;: &#34;https://developers.cloudflare.com/workers/static-assets/headers/&#34;,
+  &#34;prompt&#34;: &#34;Does Cloudflare Workers Static Assets support a _headers file? Where must it be placed relative to the assets directory, what is the syntax, and are there limits? Show an example setting a custom header on all paths.&#34;
+}</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-26-05-325Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-26-05-325Z" class="timestamp-link"><time datetime="2026-09-08T01:26:05.325Z" data-timestamp="2026-09-08T01:26:05.325Z">2026-09-08T01:26:05.325Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>Shell cwd was reset to /Users/dj/workspace/duck-invariant</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-26-11-027Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-26-11-027Z" class="timestamp-link"><time datetime="2026-09-08T01:26:11.027Z" data-timestamp="2026-09-08T01:26:11.027Z">2026-09-08T01:26:11.027Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre># Cloudflare Workers Static Assets `_headers` Support
+
+Yes, Cloudflare Workers Static Assets fully supports a `_headers` file for customizing response headers.
+
+## File Placement
+
+The `_headers` file should be placed in your static assets directory. If using a framework with a `public/` or `static/` folder, place it there since these directories are copied to the final output during the build process.
+
+## Syntax
+
+Rules are defined in multi-line blocks with a URL pattern followed by indented header pairs:
+
+```
+[url]
+  [name]: [value]
+```
+
+## Limits
+
+- Maximum 100 header rules per file
+- 2,000 character limit per line (including spacing, header name, and value)
+
+## Example: Custom Header on All Paths
+
+```txt
+/*
+  X-Custom-Header: my-value
+```
+
+This applies the custom header to every incoming URL. The documentation notes that &quot;Headers defined in the `_headers` file override what Cloudflare ordinarily sends,&quot; though custom headers from `_headers` don&#x27;t apply to responses generated by Worker code itself—only to static asset responses.</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-44-100Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-44-100Z" class="timestamp-link"><time datetime="2026-09-08T01:26:44.100Z" data-timestamp="2026-09-08T01:26:44.100Z">2026-09-08T01:26:44.100Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-44-129Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-44-129Z" class="timestamp-link"><time datetime="2026-09-08T01:26:44.129Z" data-timestamp="2026-09-08T01:26:44.129Z">2026-09-08T01:26:44.129Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Confirmed — <code>_headers</code> works for asset responses but <strong>not</strong> for Worker responses, so I need both. Implementing all the layers:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-26-59-876Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-26-59-876Z" class="timestamp-link"><time datetime="2026-09-08T01:26:59.876Z" data-timestamp="2026-09-08T01:26:59.876Z">2026-09-08T01:26:59.876Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01LtxCQ61cGKYfaA7wQH8Fc3">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Add robots.txt, crawler list, and asset headers</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+mkdir -p public
+
+cat &gt; lib/crawlers.ts &lt;&lt;&#39;EOF&#39;
+/**
+ * Crawlers named explicitly in robots.txt.
+ *
+ * A blanket `User-agent: *` rule already covers well-behaved crawlers, so why
+ * list these? Because several of the most important entries are not crawlers at
+ * all — Google-Extended and Applebot-Extended are opt-out control tokens that
+ * only take effect when addressed by name, and are ignored under the wildcard.
+ * Others (Bytespider, CCBot) have a track record of honouring only rules that
+ * name them. Naming costs nothing and covers those cases.
+ *
+ * None of this is enforcement. robots.txt is a request that a crawler is free
+ * to ignore; Cloudflare Access is what actually keeps this site private.
+ */
+
+/** AI training, retrieval and assistant crawlers. */
+export const AI_CRAWLERS = [
+  // OpenAI
+  &#34;GPTBot&#34;, &#34;ChatGPT-User&#34;, &#34;OAI-SearchBot&#34;,
+  // Anthropic
+  &#34;ClaudeBot&#34;, &#34;Claude-User&#34;, &#34;Claude-SearchBot&#34;, &#34;anthropic-ai&#34;,
+  // Google / Apple AI opt-out tokens (only honoured when named)
+  &#34;Google-Extended&#34;, &#34;Applebot-Extended&#34;,
+  // Meta
+  &#34;meta-externalagent&#34;, &#34;meta-externalfetcher&#34;, &#34;FacebookBot&#34;,
+  // Perplexity
+  &#34;PerplexityBot&#34;, &#34;Perplexity-User&#34;,
+  // Common Crawl — feeds a large share of public training corpora
+  &#34;CCBot&#34;,
+  // Others
+  &#34;Bytespider&#34;, &#34;Amazonbot&#34;, &#34;Applebot&#34;, &#34;cohere-ai&#34;,
+  &#34;cohere-training-data-crawler&#34;, &#34;Diffbot&#34;, &#34;ImagesiftBot&#34;, &#34;Omgilibot&#34;,
+  &#34;Omgili&#34;, &#34;YouBot&#34;, &#34;AI2Bot&#34;, &#34;Ai2Bot-Dolma&#34;, &#34;Timpibot&#34;, &#34;PanguBot&#34;,
+  &#34;Webzio-Extended&#34;, &#34;DuckAssistBot&#34;, &#34;MistralAI-User&#34;, &#34;Kangaroo Bot&#34;,
+  &#34;Scrapy&#34;, &#34;TurnitinBot&#34;, &#34;Firecrawl&#34;,
+];
+
+/** Search and SEO crawlers. */
+export const SEARCH_CRAWLERS = [
+  &#34;Googlebot&#34;, &#34;Googlebot-Image&#34;, &#34;Bingbot&#34;, &#34;Slurp&#34;, &#34;DuckDuckBot&#34;,
+  &#34;Baiduspider&#34;, &#34;YandexBot&#34;, &#34;Sogou&#34;, &#34;Exabot&#34;, &#34;facebot&#34;,
+  &#34;ia_archiver&#34;, &#34;archive.org_bot&#34;, &#34;AhrefsBot&#34;, &#34;SemrushBot&#34;,
+  &#34;MJ12bot&#34;, &#34;DotBot&#34;, &#34;PetalBot&#34;, &#34;Bytespider&#34;,
+];
+
+export const ALL_CRAWLERS = Array.from(
+  new Set([...AI_CRAWLERS, ...SEARCH_CRAWLERS]),
+).sort((a, b) =&gt; a.localeCompare(b));
+EOF
+
+cat &gt; app/robots.ts &lt;&lt;&#39;EOF&#39;
+import type { MetadataRoute } from &#34;next&#34;;
+import { ALL_CRAWLERS } from &#34;@/lib/crawlers&#34;;
+
+/**
+ * Ask every crawler to stay away, both under the wildcard and by name.
+ * See lib/crawlers.ts for why the explicit names matter.
+ */
+export const dynamic = &#34;force-static&#34;;
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: [
+      { userAgent: &#34;*&#34;, disallow: &#34;/&#34; },
+      { userAgent: ALL_CRAWLERS, disallow: &#34;/&#34; },
+    ],
+  };
+}
+EOF
+
+cat &gt; public/_headers &lt;&lt;&#39;EOF&#39;
+# Cloudflare Workers Static Assets applies these to asset responses.
+# Worker responses (/api/*) set the same header in worker/index.ts.
+#
+# X-Robots-Tag is the header equivalent of the robots meta tag, and unlike
+# robots.txt it also tells a crawler that already has the URL not to index it.
+# Like robots.txt, it is honoured voluntarily — Cloudflare Access is the only
+# thing that actually blocks access.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+EOF
+echo &#34;written&#34;; cat public/_headers</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-27-02-220Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-27-02-220Z" class="timestamp-link"><time datetime="2026-09-08T01:27:02.220Z" data-timestamp="2026-09-08T01:27:02.220Z">2026-09-08T01:27:02.220Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>written
+# Cloudflare Workers Static Assets applies these to asset responses.
+# Worker responses (/api/*) set the same header in worker/index.ts.
+#
+# X-Robots-Tag is the header equivalent of the robots meta tag, and unlike
+# robots.txt it also tells a crawler that already has the URL not to index it.
+# Like robots.txt, it is honoured voluntarily — Cloudflare Access is the only
+# thing that actually blocks access.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-04-931Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-04-931Z" class="timestamp-link"><time datetime="2026-09-08T01:27:04.931Z" data-timestamp="2026-09-08T01:27:04.931Z">2026-09-08T01:27:04.931Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Now the meta tags and the Worker header:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-13-461Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-13-461Z" class="timestamp-link"><time datetime="2026-09-08T01:27:13.461Z" data-timestamp="2026-09-08T01:27:13.461Z">2026-09-08T01:27:13.461Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01Xnj61JcsUga1LKfbr2kQXa">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Add robots metadata and worker headers</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+
+cat &gt; app/layout.tsx &lt;&lt;&#39;EOF&#39;
+import type { Metadata } from &#34;next&#34;;
+import &#34;./globals.css&#34;;
+
+export const metadata: Metadata = {
+  title: &#34;duck-invariant&#34;,
+  description:
+    &#34;Profile a dataset in the browser and test falsifiable hypotheses about it with DuckDB.&#34;,
+  // Belt and braces alongside robots.txt and the X-Robots-Tag header: a crawler
+  // that reaches the page anyway is told not to index, cache or excerpt it.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      &#34;max-snippet&#34;: 0,
+      &#34;max-image-preview&#34;: &#34;none&#34;,
+      &#34;max-video-preview&#34;: 0,
+    },
+  },
+  // The app fetches user-supplied data URLs from the browser. Without this the
+  // Referer header would hand this site&#39;s address to every host you point it at.
+  referrer: &#34;no-referrer&#34;,
+};
+
+export default function RootLayout({ children }: LayoutProps&lt;&#34;/&#34;&gt;) {
+  return (
+    &lt;html lang=&#34;en&#34;&gt;
+      &lt;body className=&#34;min-h-screen antialiased&#34;&gt;{children}&lt;/body&gt;
+    &lt;/html&gt;
+  );
+}
+EOF
+
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;worker/index.ts&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;const app = new Hono&lt;{ Bindings: Env }&gt;();
+&#34;&#34;&#34;
+new = &#34;&#34;&#34;const app = new Hono&lt;{ Bindings: Env }&gt;();
+
+/**
+ * Static assets get these from public/_headers, which does not apply to
+ * responses generated by Worker code — so set them here too.
+ */
+app.use(&#34;*&#34;, async (c, next) =&gt; {
+  await next();
+  c.header(&#34;X-Robots-Tag&#34;, &#34;noindex, nofollow, noarchive, nosnippet&#34;);
+  c.header(&#34;Referrer-Policy&#34;, &#34;no-referrer&#34;);
+});
+&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched worker&#34;)
+PY
+npx tsc --noEmit 2&gt;&amp;1 | head; echo &#34;typecheck exit=$?&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-27-16-889Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-27-16-889Z" class="timestamp-link"><time datetime="2026-09-08T01:27:16.889Z" data-timestamp="2026-09-08T01:27:16.889Z">2026-09-08T01:27:16.889Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched worker
+typecheck exit=0</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-20-329Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-20-329Z" class="timestamp-link"><time datetime="2026-09-08T01:27:20.329Z" data-timestamp="2026-09-08T01:27:20.329Z">2026-09-08T01:27:20.329Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-22-759Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-22-759Z" class="timestamp-link"><time datetime="2026-09-08T01:27:22.759Z" data-timestamp="2026-09-08T01:27:22.759Z">2026-09-08T01:27:22.759Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01S9RMXNQk6sM7TXiSDuBAVz">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Build and verify robots artifacts</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+npm run build 2&gt;&amp;1 | tail -12
+echo &#34;=== out/robots.txt ===&#34;; head -8 out/robots.txt 2&gt;&amp;1; echo &#34;... ($(wc -l &lt; out/robots.txt 2&gt;/dev/null) lines)&#34;
+echo &#34;=== out/_headers present? ===&#34;; ls -la out/_headers 2&gt;&amp;1
+echo &#34;=== meta robots in index.html ===&#34;; grep -o &#39;&lt;meta name=&#34;robots&#34;[^&gt;]*&gt;\|&lt;meta name=&#34;googlebot&#34;[^&gt;]*&gt;\|&lt;meta name=&#34;referrer&#34;[^&gt;]*&gt;&#39; out/index.html</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-27-28-300Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-27-28-300Z" class="timestamp-link"><time datetime="2026-09-08T01:27:28.300Z" data-timestamp="2026-09-08T01:27:28.300Z">2026-09-08T01:27:28.300Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>  Generating static pages using 5 workers (3/4) 
+✓ Generating static pages using 5 workers (4/4) in 294ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+└ ○ /robots.txt
+
+
+○  (Static)  prerendered as static content
+
+=== out/robots.txt ===
+User-Agent: *
+Disallow: /
+
+User-Agent: AhrefsBot
+User-Agent: AI2Bot
+User-Agent: Ai2Bot-Dolma
+User-Agent: Amazonbot
+User-Agent: anthropic-ai
+... (      58 lines)
+=== out/_headers present? ===
+-rw-r--r--  1 dj  staff  561 Sep  7 21:27 out/_headers
+=== meta robots in index.html ===
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;/&gt;
+&lt;meta name=&quot;robots&quot; content=&quot;noindex, nofollow, nocache&quot;/&gt;
+&lt;meta name=&quot;googlebot&quot; content=&quot;noindex, nofollow, noimageindex, max-video-preview:0, max-image-preview:none, max-snippet:0&quot;/&gt;</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-32-962Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-32-962Z" class="timestamp-link"><time datetime="2026-09-08T01:27:32.962Z" data-timestamp="2026-09-08T01:27:32.962Z">2026-09-08T01:27:32.962Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-33-316Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-33-316Z" class="timestamp-link"><time datetime="2026-09-08T01:27:33.316Z" data-timestamp="2026-09-08T01:27:33.316Z">2026-09-08T01:27:33.316Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Now verifying the headers are actually served, not just written:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-36-043Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-36-043Z" class="timestamp-link"><time datetime="2026-09-08T01:27:36.043Z" data-timestamp="2026-09-08T01:27:36.043Z">2026-09-08T01:27:36.043Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_016dUjvVxbL6q75v5dBbnWVB">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Check served headers from wrangler dev</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== asset response headers (/) ===&#34;
+curl -sI http://localhost:8787/ | grep -iE &#34;^(HTTP|x-robots-tag|referrer-policy|x-content-type-options)&#34;
+echo &#34;=== robots.txt served ===&#34;
+curl -sI http://localhost:8787/robots.txt | grep -iE &#34;^(HTTP|content-type|x-robots-tag)&#34;
+echo &#34;=== worker response headers (/api/health) ===&#34;
+curl -sI -X GET http://localhost:8787/api/health | grep -iE &#34;^(HTTP|x-robots-tag|referrer-policy)&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-27-36-170Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-27-36-170Z" class="timestamp-link"><time datetime="2026-09-08T01:27:36.170Z" data-timestamp="2026-09-08T01:27:36.170Z">2026-09-08T01:27:36.170Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== asset response headers (/) ===
+HTTP/1.1 200 OK
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+x-robots-tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+=== robots.txt served ===
+HTTP/1.1 200 OK
+Content-Type: text/plain; charset=utf-8
+x-robots-tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+=== worker response headers (/api/health) ===
+HTTP/1.1 200 OK
+Referrer-Policy: no-referrer
+X-Robots-Tag: noindex, nofollow, noarchive, nosnippet</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-41-336Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-41-336Z" class="timestamp-link"><time datetime="2026-09-08T01:27:41.336Z" data-timestamp="2026-09-08T01:27:41.336Z">2026-09-08T01:27:41.336Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-41-686Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-41-686Z" class="timestamp-link"><time datetime="2026-09-08T01:27:41.686Z" data-timestamp="2026-09-08T01:27:41.686Z">2026-09-08T01:27:41.686Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>All three layers confirmed live. Adding tests so they can't silently regress:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-27-52-519Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-27-52-519Z" class="timestamp-link"><time datetime="2026-09-08T01:27:52.519Z" data-timestamp="2026-09-08T01:27:52.519Z">2026-09-08T01:27:52.519Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01AuhMCrfhK2ScQLz3FFhCA9">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Add robots tests and verify</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+
+cat &gt; test/robots.test.ts &lt;&lt;&#39;EOF&#39;
+import { describe, it, expect } from &#34;vitest&#34;;
+import { readFileSync } from &#34;node:fs&#34;;
+import robots from &#34;@/app/robots&#34;;
+import { ALL_CRAWLERS, AI_CRAWLERS } from &#34;@/lib/crawlers&#34;;
+
+describe(&#34;robots.txt&#34;, () =&gt; {
+  const rules = robots().rules as { userAgent: string | string[]; disallow: string }[];
+
+  it(&#34;disallows everything under the wildcard&#34;, () =&gt; {
+    const wildcard = rules.find((r) =&gt; r.userAgent === &#34;*&#34;);
+    expect(wildcard?.disallow).toBe(&#34;/&#34;);
+  });
+
+  it(&#34;names the opt-out tokens that the wildcard cannot cover&#34;, () =&gt; {
+    // Google-Extended and Applebot-Extended are not crawlers; they are control
+    // tokens that only take effect when addressed by name.
+    expect(AI_CRAWLERS).toContain(&#34;Google-Extended&#34;);
+    expect(AI_CRAWLERS).toContain(&#34;Applebot-Extended&#34;);
+    const named = rules.find((r) =&gt; Array.isArray(r.userAgent))?.userAgent as string[];
+    expect(named).toContain(&#34;Google-Extended&#34;);
+    expect(named).toContain(&#34;Applebot-Extended&#34;);
+  });
+
+  it(&#34;names the major AI crawlers and disallows them&#34;, () =&gt; {
+    const named = rules.find((r) =&gt; Array.isArray(r.userAgent))?.userAgent as string[];
+    for (const bot of [&#34;GPTBot&#34;, &#34;ClaudeBot&#34;, &#34;CCBot&#34;, &#34;PerplexityBot&#34;, &#34;Bytespider&#34;]) {
+      expect(named, bot).toContain(bot);
+    }
+    expect(rules.every((r) =&gt; r.disallow === &#34;/&#34;)).toBe(true);
+  });
+
+  it(&#34;lists every crawler exactly once&#34;, () =&gt; {
+    expect(new Set(ALL_CRAWLERS).size).toBe(ALL_CRAWLERS.length);
+  });
+});
+
+describe(&#34;_headers&#34;, () =&gt; {
+  const headers = readFileSync(&#34;public/_headers&#34;, &#34;utf8&#34;);
+
+  it(&#34;applies noindex to every path&#34;, () =&gt; {
+    expect(headers).toMatch(/^\/\*$/m);
+    expect(headers).toMatch(/X-Robots-Tag:.*noindex/);
+    expect(headers).toMatch(/X-Robots-Tag:.*nofollow/);
+  });
+
+  it(&#34;stops this site&#39;s URL leaking to data hosts via Referer&#34;, () =&gt; {
+    expect(headers).toMatch(/Referrer-Policy:\s*no-referrer/);
+  });
+});
+EOF
+
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;test/worker.test.ts&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;  it(&#34;404s unknown routes&#34;, async () =&gt; {&#34;&#34;&#34;
+new = &#34;&#34;&#34;  it(&#34;marks API responses noindex, since _headers does not cover them&#34;, async () =&gt; {
+    const res = await app.request(&#34;/api/health&#34;, {}, ENV);
+    expect(res.headers.get(&#34;x-robots-tag&#34;)).toMatch(/noindex/);
+    expect(res.headers.get(&#34;referrer-policy&#34;)).toBe(&#34;no-referrer&#34;);
+  });
+
+  it(&#34;404s unknown routes&#34;, async () =&gt; {&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched&#34;)
+PY
+npx vitest run 2&gt;&amp;1 | tail -8; npx tsc --noEmit &amp;&amp; echo &#34;types clean&#34;; npm run lint 2&gt;&amp;1 | tail -2</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-28-01-175Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-28-01-175Z" class="timestamp-link"><time datetime="2026-09-08T01:28:01.175Z" data-timestamp="2026-09-08T01:28:01.175Z">2026-09-08T01:28:01.175Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched
+ RUN  v4.1.11 /Users/dj/workspace/duck-invariant
+
+
+ Test Files  6 passed (6)
+      Tests  51 passed (51)
+   Start at  21:27:54
+   Duration  2.96s (transform 306ms, setup 0ms, import 565ms, tests 4.40s, environment 0ms)
+
+types clean
+&gt; eslint</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-09-260Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-09-260Z" class="timestamp-link"><time datetime="2026-09-08T01:28:09.260Z" data-timestamp="2026-09-08T01:28:09.260Z">2026-09-08T01:28:09.260Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-09-966Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-09-966Z" class="timestamp-link"><time datetime="2026-09-08T01:28:09.966Z" data-timestamp="2026-09-08T01:28:09.966Z">2026-09-08T01:28:09.966Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>51 tests pass. One more concrete hardening step worth checking — preview URLs create additional public hostnames:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-12-335Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-12-335Z" class="timestamp-link"><time datetime="2026-09-08T01:28:12.335Z" data-timestamp="2026-09-08T01:28:12.335Z">2026-09-08T01:28:12.335Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01XqdjvMuftVaRu4bN4FMKPp">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Check wrangler preview_urls config key</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+python3 -c &#34;
+import json,re
+s=open(&#39;node_modules/wrangler/config-schema.json&#39;).read()
+d=json.loads(s)
+def find(o,path=&#39;&#39;):
+    if isinstance(o,dict):
+        for k,v in o.items():
+            if &#39;preview_urls&#39; == k:
+                print(&#39;FOUND&#39;, path+&#39;/&#39;+k, json.dumps(v)[:300])
+            find(v, path+&#39;/&#39;+str(k))
+    elif isinstance(o,list):
+        for i,v in enumerate(o): find(v, path+&#39;/&#39;+str(i))
+find(d)
+&#34; 2&gt;&amp;1 | head -5</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-28-14-752Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-28-14-752Z" class="timestamp-link"><time datetime="2026-09-08T01:28:14.752Z" data-timestamp="2026-09-08T01:28:14.752Z">2026-09-08T01:28:14.752Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>FOUND /definitions/RawConfig/properties/preview_urls {&quot;type&quot;: &quot;boolean&quot;, &quot;description&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to serve Preview URLs for your Worker.&quot;, &quot;markdownDescription&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to\nserve Preview URLs for your Worker.&quot;, &quot;default&quot;: false}
+FOUND /definitions/RawEnvironment/properties/preview_urls {&quot;type&quot;: &quot;boolean&quot;, &quot;description&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to serve Preview URLs for your Worker.&quot;, &quot;markdownDescription&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to\nserve Preview URLs for your Worker.&quot;, &quot;default&quot;: false}
+FOUND /definitions/interface-769040647-11843-22205-769040647-0-567642004818536/properties/preview_urls {&quot;type&quot;: &quot;boolean&quot;, &quot;description&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to serve Preview URLs for your Worker.&quot;, &quot;markdownDescription&quot;: &quot;Whether we use &lt;version&gt;-&lt;name&gt;.&lt;subdomain&gt;.workers.dev to\nserve Preview URLs for your Worker.&quot;, &quot;default&quot;: false}</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-19-604Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-19-604Z" class="timestamp-link"><time datetime="2026-09-08T01:28:19.604Z" data-timestamp="2026-09-08T01:28:19.604Z">2026-09-08T01:28:19.604Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-24-102Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-24-102Z" class="timestamp-link"><time datetime="2026-09-08T01:28:24.102Z" data-timestamp="2026-09-08T01:28:24.102Z">2026-09-08T01:28:24.102Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_017vFNP9CaKD8aAF5Ycjtp1g">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Disable preview URLs and validate config</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;wrangler.jsonc&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;  &#34;compatibility_flags&#34;: [&#34;nodejs_compat&#34;],
+  &#34;observability&#34;: { &#34;enabled&#34;: true },&#34;&#34;&#34;
+new = &#34;&#34;&#34;  &#34;compatibility_flags&#34;: [&#34;nodejs_compat&#34;],
+  &#34;observability&#34;: { &#34;enabled&#34;: true },
+  // Every extra public hostname is another way to stumble onto this site.
+  // Preview URLs publish &lt;version&gt;-duck-invariant.&lt;subdomain&gt;.workers.dev,
+  // which is not covered by an Access policy scoped to the production host.
+  &#34;preview_urls&#34;: false,&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched&#34;)
+PY
+grep -n &#34;preview_urls&#34; wrangler.jsonc
+npx wrangler types --help &gt;/dev/null 2&gt;&amp;1; node -e &#34;
+const s=require(&#39;fs&#39;).readFileSync(&#39;wrangler.jsonc&#39;,&#39;utf8&#39;).replace(/^\s*\/\/.*$/gm,&#39;&#39;);
+JSON.parse(s); console.log(&#39;wrangler.jsonc parses cleanly&#39;);
+&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-28-27-466Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-28-27-466Z" class="timestamp-link"><time datetime="2026-09-08T01:28:27.466Z" data-timestamp="2026-09-08T01:28:27.466Z">2026-09-08T01:28:27.466Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched
+11:  &quot;preview_urls&quot;: false,
+wrangler.jsonc parses cleanly</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-29-340Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-29-340Z" class="timestamp-link"><time datetime="2026-09-08T01:28:29.340Z" data-timestamp="2026-09-08T01:28:29.340Z">2026-09-08T01:28:29.340Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Now documenting it honestly in the README:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-39-652Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-39-652Z" class="timestamp-link"><time datetime="2026-09-08T01:28:39.652Z" data-timestamp="2026-09-08T01:28:39.652Z">2026-09-08T01:28:39.652Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01CHYMaV91RrRjFjnKQSuxdx">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Document discoverability controls in README</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;README.md&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;## Model
+&#34;&#34;&#34;
+new = &#34;&#34;&#34;## Keeping it off search engines and AI crawlers
+
+Four layers, in descending order of how much they are actually worth:
+
+1. **Cloudflare Access — the only one that enforces anything.** A crawler cannot authenticate, so
+   it gets the login redirect instead of your page. Everything below is a request that a
+   well-behaved crawler chooses to honour; Access is the part that does not depend on goodwill.
+2. **`preview_urls: false`** in `wrangler.jsonc`. Preview URLs publish an extra hostname
+   (`&lt;version&gt;-duck-invariant.&lt;subdomain&gt;.workers.dev`) that an Access policy scoped to the
+   production host would not cover.
+3. **`X-Robots-Tag: noindex, nofollow, noarchive, nosnippet`** on every response. Asset responses
+   get it from `public/_headers`; Worker responses get it from middleware in `worker/index.ts`,
+   because `_headers` does not apply to them. Unlike robots.txt this also tells a crawler that
+   *already has* the URL not to index it.
+4. **`robots.txt` and robots meta tags.** Generated by `app/robots.ts` from the list in
+   `lib/crawlers.ts`: a blanket `User-agent: *` plus ~50 named crawlers. The names matter because
+   `Google-Extended` and `Applebot-Extended` are not crawlers at all — they are AI-training
+   opt-out tokens that only take effect when addressed by name, and are ignored under the
+   wildcard.
+
+`Referrer-Policy: no-referrer` is also set. That one is not about crawlers: the app fetches
+data URLs you supply, and without it the `Referer` header would hand this site&#39;s address to
+every host you point it at — which is exactly how a private URL stops being private.
+
+The remaining exposure is a link. Crawlers find URLs mostly by following them, so pasting the
+address into a public issue, a shared doc, or a chat that indexes its history will do more to make
+it discoverable than any of the above will prevent. Enable Access and the point is moot.
+
+## Model
+&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched README&#34;)
+PY
+grep -n &#34;^## &#34; README.md</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-28-41-494Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-28-41-494Z" class="timestamp-link"><time datetime="2026-09-08T01:28:41.494Z" data-timestamp="2026-09-08T01:28:41.494Z">2026-09-08T01:28:41.494Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched README
+14:## Quick start
+25:## How the privacy guarantee works
+51:## How generated SQL is contained
+69:## Layout
+86:## Deploy
+101:## Keeping it off search engines and AI crawlers
+129:## Model
+136:## Tests
+146:## Known limits</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-28-47-300Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-28-47-300Z" class="timestamp-link"><time datetime="2026-09-08T01:28:47.300Z" data-timestamp="2026-09-08T01:28:47.300Z">2026-09-08T01:28:47.300Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01EirgTn8XbEwi2vmtPrbuJy">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Final full verification</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== final: tests / types / lint / build ===&#34;
+npx vitest run 2&gt;&amp;1 | tail -6
+npx tsc --noEmit &amp;&amp; echo &#34;types clean&#34;
+npm run lint 2&gt;&amp;1 | tail -2
+npm run build 2&gt;&amp;1 | grep -E &#34;robots|Route|○|✓ Gen&#34; | tail -8
+echo &#34;=== live header check ===&#34;
+curl -sI http://localhost:8787/ | grep -i &#34;x-robots-tag&#34;
+curl -sI http://localhost:8787/api/health | grep -i &#34;x-robots-tag&#34;
+echo &#34;=== robots.txt (first + last) ===&#34;
+head -3 out/robots.txt; echo &#34;...&#34;; tail -3 out/robots.txt
+echo &#34;named crawlers: $(grep -c &#39;^User-Agent:&#39; out/robots.txt)&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-28-59-132Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-28-59-132Z" class="timestamp-link"><time datetime="2026-09-08T01:28:59.132Z" data-timestamp="2026-09-08T01:28:59.132Z">2026-09-08T01:28:59.132Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== final: tests / types / lint / build ===
+
+ Test Files  6 passed (6)
+      Tests  51 passed (51)
+   Start at  21:28:49
+   Duration  2.72s (transform 302ms, setup 0ms, import 557ms, tests 4.25s, environment 0ms)
+
+types clean
+&gt; eslint
+
+✓ Generating static pages using 5 workers (4/4) in 294ms
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+└ ○ /robots.txt
+○  (Static)  prerendered as static content
+=== live header check ===
+X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
+=== robots.txt (first + last) ===
+User-Agent: *
+Disallow: /
+
+...
+User-Agent: YouBot
+Disallow: /
+
+named crawlers: 54</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-29-02-422Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-29-02-422Z" class="timestamp-link"><time datetime="2026-09-08T01:29:02.422Z" data-timestamp="2026-09-08T01:29:02.422Z">2026-09-08T01:29:02.422Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-29-03-193Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-29-03-193Z" class="timestamp-link"><time datetime="2026-09-08T01:29:03.193Z" data-timestamp="2026-09-08T01:29:03.193Z">2026-09-08T01:29:03.193Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>The asset header didn't come back on that run — the build had just replaced <code>out/</code>. Re-checking:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-29-05-567Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-29-05-567Z" class="timestamp-link"><time datetime="2026-09-08T01:29:05.567Z" data-timestamp="2026-09-08T01:29:05.567Z">2026-09-08T01:29:05.567Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01HrPkBez8t4gXQduZVxTwMG">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Recheck asset headers after rebuild</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+ls -la out/_headers &amp;&amp; echo &#34;---&#34;
+sleep 1
+echo &#34;=== / ===&#34;; curl -sI http://localhost:8787/ | grep -iE &#34;^(HTTP|x-robots-tag|referrer-policy)&#34;
+echo &#34;=== /robots.txt ===&#34;; curl -sI http://localhost:8787/robots.txt | grep -iE &#34;^(HTTP|x-robots-tag)&#34;
+echo &#34;=== /some/spa/path ===&#34;; curl -sI http://localhost:8787/some/spa/path | grep -iE &#34;^(HTTP|x-robots-tag)&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-29-06-697Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-29-06-697Z" class="timestamp-link"><time datetime="2026-09-08T01:29:06.697Z" data-timestamp="2026-09-08T01:29:06.697Z">2026-09-08T01:29:06.697Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>-rw-r--r--  1 dj  staff  561 Sep  7 21:28 out/_headers
+---
+=== / ===
+HTTP/1.1 200 OK
+referrer-policy: no-referrer
+x-robots-tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+=== /robots.txt ===
+HTTP/1.1 200 OK
+x-robots-tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate
+=== /some/spa/path ===
+HTTP/1.1 200 OK
+x-robots-tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-29-13-788Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-29-13-788Z" class="timestamp-link"><time datetime="2026-09-08T01:29:13.788Z" data-timestamp="2026-09-08T01:29:13.788Z">2026-09-08T01:29:13.788Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-29-25-441Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-29-25-441Z" class="timestamp-link"><time datetime="2026-09-08T01:29:25.441Z" data-timestamp="2026-09-08T01:29:25.441Z">2026-09-08T01:29:25.441Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Done, verified live on asset paths, the SPA fallback, and API responses.</p>
+<h2>What I added</h2>
+<p><strong>Four layers, in descending order of what they're actually worth:</strong></p>
+<ol>
+<li><strong><code>preview_urls: false</code></strong> in <code>wrangler.jsonc</code> — preview deployments publish an <em>extra</em> hostname (<code>&lt;version&gt;-duck-invariant.&lt;subdomain&gt;.workers.dev</code>) that an Access policy scoped to the production host wouldn't cover. This was a real hole worth closing.</li>
+<li><strong><code>X-Robots-Tag: noindex, nofollow, noarchive, nosnippet</code></strong> on every response. Assets get it from <code>public/_headers</code>; Worker responses need it set separately in middleware, because <code>_headers</code> explicitly does not apply to Worker-generated responses. This one matters more than robots.txt — it also tells a crawler that <em>already has</em> your URL not to index it.</li>
+<li><strong><code>robots.txt</code></strong> generated from <code>lib/crawlers.ts</code> — wildcard disallow plus 54 named agents.</li>
+<li><strong>Robots meta tags</strong> (<code>noindex, nofollow, nocache</code> + a googlebot variant) in the layout.</li>
+</ol>
+<p>The named list isn't redundant with the wildcard, which is why I built it that way: <strong><code>Google-Extended</code> and <code>Applebot-Extended</code> aren't crawlers at all</strong> — they're AI-training opt-out control tokens that only take effect when addressed by name, and are ignored under <code>User-agent: *</code>. Same reasoning covers <code>CCBot</code> (feeds a large share of public training corpora) and <code>Bytespider</code>.</p>
+<p>I also set <strong><code>Referrer-Policy: no-referrer</code></strong>, which isn't about crawlers. The app fetches data URLs you type in; without it the <code>Referer</code> header hands your site's address to every host you point it at — a direct way for a private URL to stop being private.</p>
+<h2>The honest part</h2>
+<p>Layers 2–4 are requests. A crawler honors them because it chooses to; a scraper that doesn't care will ignore all of them. <strong>Cloudflare Access is the only thing here that enforces anything</strong> — a crawler can't authenticate, so it gets the login redirect instead of your page. If being non-discoverable actually matters, that's the step to do, and it makes the rest moot.</p>
+<p>The residual risk after all of it is a link. Crawlers find URLs mainly by following them, so pasting the address into a public issue or a chat that indexes its history will do more to surface the site than these headers will prevent.</p>
+<h2>Verification</h2>
+<p>51 tests (7 new, covering the header middleware and the opt-out tokens), types clean, lint clean, build clean. Headers confirmed live via curl on <code>/</code>, <code>/robots.txt</code>, an SPA fallback path, and <code>/api/health</code>.</p>
+<p>One caveat carried over from before: the browser UI is still unverified end to end, since the Chrome extension isn't connected.</p></div></div></div>
+<div class="message user" id="msg-2026-09-08T01-35-00-066Z"><div class="message-header"><span class="role-label">User</span><a href="#msg-2026-09-08T01-35-00-066Z" class="timestamp-link"><time datetime="2026-09-08T01:35:00.066Z" data-timestamp="2026-09-08T01:35:00.066Z">2026-09-08T01:35:00.066Z</time></a></div><div class="message-content">
+<div class="user-content"><p>commit this</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-10-477Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-10-477Z" class="timestamp-link"><time datetime="2026-09-08T01:35:10.477Z" data-timestamp="2026-09-08T01:35:10.477Z">2026-09-08T01:35:10.477Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-12-370Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-12-370Z" class="timestamp-link"><time datetime="2026-09-08T01:35:12.370Z" data-timestamp="2026-09-08T01:35:12.370Z">2026-09-08T01:35:12.370Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_018RpryB4hiCY2BePtu7YVUE">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Inspect git state</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== branch ===&#34;; git branch --show-current
+echo &#34;=== log ===&#34;; git log --oneline -5 2&gt;&amp;1 | head
+echo &#34;=== remote ===&#34;; git remote -v
+echo &#34;=== status (short) ===&#34;; git status --short | head -50
+echo &#34;=== count ===&#34;; git status --short | wc -l</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-35-12-565Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-35-12-565Z" class="timestamp-link"><time datetime="2026-09-08T01:35:12.565Z" data-timestamp="2026-09-08T01:35:12.565Z">2026-09-08T01:35:12.565Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== branch ===
+main
+=== log ===
+5dbe215 Initial commit from Create Next App
+=== remote ===
+=== status (short) ===
+ M .gitignore
+ M AGENTS.md
+ M README.md
+ M app/globals.css
+ M app/layout.tsx
+ M app/page.tsx
+ M eslint.config.mjs
+ M next.config.ts
+ M package-lock.json
+ M package.json
+ M tsconfig.json
+?? .dev.vars.example
+?? app/robots.ts
+?? components/
+?? lib/
+?? public/
+?? test/
+?? vitest.config.mts
+?? worker/
+?? wrangler.jsonc
+=== count ===
+      20</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-19-701Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-19-701Z" class="timestamp-link"><time datetime="2026-09-08T01:35:19.701Z" data-timestamp="2026-09-08T01:35:19.701Z">2026-09-08T01:35:19.701Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-20-398Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-20-398Z" class="timestamp-link"><time datetime="2026-09-08T01:35:20.398Z" data-timestamp="2026-09-08T01:35:20.398Z">2026-09-08T01:35:20.398Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Checking nothing sensitive gets committed, and one thing I want to verify about the dev config:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-24-045Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-24-045Z" class="timestamp-link"><time datetime="2026-09-08T01:35:24.045Z" data-timestamp="2026-09-08T01:35:24.045Z">2026-09-08T01:35:24.045Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01FAchxc3vjDBNzaQQi3gT1A">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Verify secrets excluded and check env file</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== ignored? ===&#34;
+for f in .dev.vars .env.development out .wrangler node_modules .next; do printf &#34;%-20s &#34; &#34;$f&#34;; git check-ignore -q &#34;$f&#34; &amp;&amp; echo IGNORED || echo &#34;tracked/untracked&#34;; done
+echo &#34;=== secret scan of what would be committed ===&#34;
+git add -A --dry-run &gt;/dev/null 2&gt;&amp;1
+git ls-files -o --exclude-standard -c | grep -vE &#34;^(node_modules|\.next|out)/&#34; | xargs grep -lniE &#34;sk-ant-[a-z0-9]|api[_-]?key\s*[:=]\s*[&#39;\&#34;][a-z0-9]{16}&#34; 2&gt;/dev/null | head
+echo &#34;(no output above = no literal keys)&#34;
+echo &#34;=== .env.development contents ===&#34;; cat .env.development</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-35-26-052Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-35-26-052Z" class="timestamp-link"><time datetime="2026-09-08T01:35:26.052Z" data-timestamp="2026-09-08T01:35:26.052Z">2026-09-08T01:35:26.052Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== ignored? ===
+.dev.vars            IGNORED
+.env.development     IGNORED
+out                  IGNORED
+.wrangler            IGNORED
+node_modules         IGNORED
+.next                IGNORED
+=== secret scan of what would be committed ===
+(no output above = no literal keys)
+=== .env.development contents ===
+# In dev the static site (:3000) and the Worker (:8787) are separate origins.
+# In production they are the same origin, so this is empty (see lib/api.ts).
+NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-35-283Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-35-283Z" class="timestamp-link"><time datetime="2026-09-08T01:35:35.283Z" data-timestamp="2026-09-08T01:35:35.283Z">2026-09-08T01:35:35.283Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-36-392Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-36-392Z" class="timestamp-link"><time datetime="2026-09-08T01:35:36.392Z" data-timestamp="2026-09-08T01:35:36.392Z">2026-09-08T01:35:36.392Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p><code>.dev.vars</code> is correctly ignored. But the scaffold's blanket <code>.env*</code> rule also ignores <code>.env.development</code>, which holds no secret — and without it a fresh clone's dev server would silently POST to a nonexistent endpoint. Fixing that before committing:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-40-171Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-40-171Z" class="timestamp-link"><time datetime="2026-09-08T01:35:40.171Z" data-timestamp="2026-09-08T01:35:40.171Z">2026-09-08T01:35:40.171Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01Qrx7JXH9ZPFBPXNUPxp7v4">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Un-ignore non-secret dev env file</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;.gitignore&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;# env files (can opt-in for committing if needed)
+.env*&#34;&#34;&#34;
+new = &#34;&#34;&#34;# env files (can opt-in for committing if needed)
+.env*
+# ...but this one holds no secret, only the dev API base URL, and `npm run dev`
+# silently misroutes /api requests without it. Secrets live in .dev.vars.
+!.env.development&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched&#34;)
+PY
+printf &#34;%-20s &#34; &#34;.env.development&#34;; git check-ignore -q .env.development &amp;&amp; echo &#34;still IGNORED&#34; || echo &#34;now tracked&#34;
+printf &#34;%-20s &#34; &#34;.dev.vars&#34;; git check-ignore -q .dev.vars &amp;&amp; echo &#34;IGNORED (correct)&#34; || echo &#34;WARNING: not ignored&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-35-42-275Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-35-42-275Z" class="timestamp-link"><time datetime="2026-09-08T01:35:42.275Z" data-timestamp="2026-09-08T01:35:42.275Z">2026-09-08T01:35:42.275Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched
+.env.development     now tracked
+.dev.vars            IGNORED (correct)</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-46-287Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-46-287Z" class="timestamp-link"><time datetime="2026-09-08T01:35:46.287Z" data-timestamp="2026-09-08T01:35:46.287Z">2026-09-08T01:35:46.287Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_016FKnFyxsBYx9kwpjAnavsb">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Create branch and stage changes</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+git checkout -b feat/invariant-detection 2&gt;&amp;1
+git add -A
+echo &#34;=== staged files ===&#34;
+git status --short | head -60
+echo &#34;=== total staged: $(git diff --cached --name-only | wc -l) ===&#34;
+echo &#34;=== sanity: no secret files staged ===&#34;
+git diff --cached --name-only | grep -E &#34;\.dev\.vars$|\.env\.local|secret&#34; || echo &#34;none&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-35-47-866Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-35-47-866Z" class="timestamp-link"><time datetime="2026-09-08T01:35:47.866Z" data-timestamp="2026-09-08T01:35:47.866Z">2026-09-08T01:35:47.866Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>Switched to a new branch &#x27;feat/invariant-detection&#x27;
+=== staged files ===
+A  .dev.vars.example
+A  .env.development
+M  .gitignore
+M  AGENTS.md
+M  README.md
+M  app/globals.css
+M  app/layout.tsx
+M  app/page.tsx
+A  app/robots.ts
+A  components/HypothesisList.tsx
+A  components/ProfilePanel.tsx
+A  components/ValidationChecklist.tsx
+A  components/ViolationTable.tsx
+M  eslint.config.mjs
+A  lib/api.ts
+A  lib/arrow.ts
+A  lib/crawlers.ts
+A  lib/duckdb/bundles.ts
+A  lib/duckdb/client.ts
+A  lib/duckdb/load.ts
+A  lib/hypotheses/evaluate.ts
+A  lib/hypotheses/guard.ts
+A  lib/hypotheses/schema.ts
+A  lib/profile/profile.ts
+A  lib/profile/queries.ts
+A  lib/profile/redaction.ts
+A  lib/profile/shapes.ts
+A  lib/profile/types.ts
+A  lib/sources/validate.ts
+M  next.config.ts
+M  package-lock.json
+M  package.json
+A  public/_headers
+A  test/evaluate.test.ts
+A  test/fixtures.ts
+A  test/guard.test.ts
+A  test/helpers/duckdb.ts
+A  test/integration.test.ts
+A  test/profile.test.ts
+A  test/robots.test.ts
+A  test/worker.test.ts
+M  tsconfig.json
+A  vitest.config.mts
+A  worker/index.ts
+A  worker/prompt.ts
+A  wrangler.jsonc
+=== total staged:       46 ===
+=== sanity: no secret files staged ===
+none</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-35-52-384Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-35-52-384Z" class="timestamp-link"><time datetime="2026-09-08T01:35:52.384Z" data-timestamp="2026-09-08T01:35:52.384Z">2026-09-08T01:35:52.384Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-36-07-115Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-36-07-115Z" class="timestamp-link"><time datetime="2026-09-08T01:36:07.115Z" data-timestamp="2026-09-08T01:36:07.115Z">2026-09-08T01:36:07.115Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01BZ6tW1EDp5MxKkRwTxYfAt">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Commit the work</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+git commit -F - &lt;&lt;&#39;EOF&#39;
+Add browser-based invariant detection over DuckDB-WASM
+
+Point the app at a Parquet/CSV/JSON URL or a local file. It validates the
+source, loads it into DuckDB-WASM, profiles every column, then asks Claude to
+propose falsifiable hypotheses about the data. Each hypothesis is evaluated
+locally and reported as HOLDS or FALSIFIED with a violation count.
+
+Architecture: Next.js static export served from Cloudflare Workers static
+assets, plus a thin stateless Hono Worker that holds the API key. All state and
+compute live in the browser; the server exists only for inference.
+
+Two guarantees hold the design together, both enforced and tested:
+
+1. No cell value leaves the browser. The only outbound payload is TableProfile
+   -- counts, percentages, numeric/date ranges, string length and character
+   class distributions, and masked format shapes where every letter is a/A and
+   every digit is 9. assertNoValues() gates it client-side, the Worker re-parses
+   it through the same zod schema so a modified client cannot add fields, and
+   tests seeded with realistic PII and real TPC-H data assert none of it
+   survives. The UI exposes the exact request body so this needs no trust.
+
+2. Model-authored SQL is contained. Claude emits structured checks rather than
+   raw SQL, so the FROM clause is always ours and the result is always a count.
+   The expression guard rejects SELECT, semicolons, comments and any file/URL
+   function -- banning SELECT removes subquery exfiltration, which a row
+   predicate never needs. Data is then materialised and external access is
+   switched off before any generated SQL runs; an integration test proves a
+   remote read actually fails afterwards.
+
+Also not discoverable by search engines or AI crawlers: preview URLs disabled,
+X-Robots-Tag on both asset and Worker responses, robots.txt naming ~54 agents
+(the AI opt-out tokens Google-Extended and Applebot-Extended only take effect
+when addressed by name), and no-referrer so the site&#39;s URL is not handed to
+every data host it fetches from. These are voluntary; Cloudflare Access is the
+part that enforces.
+
+Notable fix found while testing: sum() over BIGINT returns HUGEINT, which Arrow
+delivers as a Decimal128 word array that coerces to 0 rather than erroring. It
+was silently zeroing every character-class percentage and would have broken
+min/max on any DECIMAL column. Fixed with explicit casts plus a decoder
+backstop, and pinned with regression tests.
+
+51 tests. Profiling and evaluation run against a real DuckDB via the Node build
+of duckdb-wasm, so they exercise the same SQL the browser does.
+
+Not yet verified: the browser UI end to end, and the live Anthropic call.
+
+Co-Authored-By: Claude Opus 5 (1M context) &lt;noreply@anthropic.com&gt;
+Claude-Session: https://claude.ai/code/session_01DksYLLU65Wr3bKfqy5tjRn
+EOF
+echo &#34;=== result ===&#34;
+git log --oneline -3
+echo &#34;=== stat ===&#34;
+git show --stat HEAD | tail -8
+echo &#34;=== working tree ===&#34;
+git status --short | head</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-36-09-901Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-36-09-901Z" class="timestamp-link"><time datetime="2026-09-08T01:36:09.901Z" data-timestamp="2026-09-08T01:36:09.901Z">2026-09-08T01:36:09.901Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><div class="commit-card"><span class="commit-card-hash">80a1b10</span> Add browser-based invariant detection over DuckDB-WASM</div><pre>46 files changed, 10536 insertions(+), 4201 deletions(-)
+ create mode 100644 .dev.vars.example
+ create mode 100644 .env.development
+ create mode 100644 app/robots.ts
+ create mode 100644 components/HypothesisList.tsx
+ create mode 100644 components/ProfilePanel.tsx
+ create mode 100644 components/ValidationChecklist.tsx
+ create mode 100644 components/ViolationTable.tsx
+ create mode 100644 lib/api.ts
+ create mode 100644 lib/arrow.ts
+ create mode 100644 lib/crawlers.ts
+ create mode 100644 lib/duckdb/bundles.ts
+ create mode 100644 lib/duckdb/client.ts
+ create mode 100644 lib/duckdb/load.ts
+ create mode 100644 lib/hypotheses/evaluate.ts
+ create mode 100644 lib/hypotheses/guard.ts
+ create mode 100644 lib/hypotheses/schema.ts
+ create mode 100644 lib/profile/profile.ts
+ create mode 100644 lib/profile/queries.ts
+ create mode 100644 lib/profile/redaction.ts
+ create mode 100644 lib/profile/shapes.ts
+ create mode 100644 lib/profile/types.ts
+ create mode 100644 lib/sources/validate.ts
+ create mode 100644 public/_headers
+ create mode 100644 test/evaluate.test.ts
+ create mode 100644 test/fixtures.ts
+ create mode 100644 test/guard.test.ts
+ create mode 100644 test/helpers/duckdb.ts
+ create mode 100644 test/integration.test.ts
+ create mode 100644 test/profile.test.ts
+ create mode 100644 test/robots.test.ts
+ create mode 100644 test/worker.test.ts
+ create mode 100644 vitest.config.mts
+ create mode 100644 worker/index.ts
+ create mode 100644 worker/prompt.ts
+ create mode 100644 wrangler.jsonc
+=== result ===
+80a1b10 Add browser-based invariant detection over DuckDB-WASM
+5dbe215 Initial commit from Create Next App
+=== stat ===
+ test/robots.test.ts                |    49 +
+ test/worker.test.ts                |   103 +
+ tsconfig.json                      |     2 +-
+ vitest.config.mts                  |    15 +
+ worker/index.ts                    |   128 +
+ worker/prompt.ts                   |    59 +
+ wrangler.jsonc                     |    23 +
+ 46 files changed, 10536 insertions(+), 4201 deletions(-)
+=== working tree ===</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-36-14-379Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-36-14-379Z" class="timestamp-link"><time datetime="2026-09-08T01:36:14.379Z" data-timestamp="2026-09-08T01:36:14.379Z">2026-09-08T01:36:14.379Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-36-18-166Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-36-18-166Z" class="timestamp-link"><time datetime="2026-09-08T01:36:18.166Z" data-timestamp="2026-09-08T01:36:18.166Z">2026-09-08T01:36:18.166Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Committed as <code>80a1b10</code> on a new branch <code>feat/invariant-detection</code>, branched off <code>main</code> (which keeps just the Create Next App scaffold). Working tree is clean.</p>
+<p>46 files, 51 tests. Two things I checked before committing:</p>
+<ul>
+<li><strong><code>.dev.vars</code> is correctly ignored</strong> — the API key file never enters git. I also scanned the staged set for literal key patterns; nothing.</li>
+<li><strong><code>.env.development</code> was being swallowed</strong> by the scaffold's blanket <code>.env*</code> rule. It holds no secret, just <code>NEXT_PUBLIC_API_BASE</code>, and without it a fresh clone's <code>npm run dev</code> would POST to <code>localhost:3000/api/hypotheses</code> — a path that doesn't exist in a static export — and fail confusingly. I added a targeted <code>!.env.development</code> negation with a comment explaining why, and left <code>.dev.vars</code> ignored.</li>
+</ul>
+<p>There's no remote configured, so nothing to push. When you're ready, either <code>git merge feat/invariant-detection</code> into main, or add a remote and push the branch.</p></div></div></div>
+<div class="message user" id="msg-2026-09-08T01-50-11-166Z"><div class="message-header"><span class="role-label">User</span><a href="#msg-2026-09-08T01-50-11-166Z" class="timestamp-link"><time datetime="2026-09-08T01:50:11.166Z" data-timestamp="2026-09-08T01:50:11.166Z">2026-09-08T01:50:11.166Z</time></a></div><div class="message-content">
+<div class="user-content"><p>I'm getting the following error when I upload a local file:</p>
+<p>Permission Error: Cannot access file "source_input" - file system operations are disabled by configuration LINE 1: CREATE OR REPLACE TABLE data AS SELECT * FROM read_parquet('source_input') ^</p>
+<p>Also getting this error when I load the sample URL as part of the app:</p>
+<p>Permission Error: Cannot access file "source_input" - file system operations are disabled by configuration LINE 1: CREATE OR REPLACE TABLE data AS SELECT * FROM read_parquet('source_input') ^</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-50-46-780Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-50-46-780Z" class="timestamp-link"><time datetime="2026-09-08T01:50:46.780Z" data-timestamp="2026-09-08T01:50:46.780Z">2026-09-08T01:50:46.780Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-50-48-130Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-50-48-130Z" class="timestamp-link"><time datetime="2026-09-08T01:50:48.130Z" data-timestamp="2026-09-08T01:50:48.130Z">2026-09-08T01:50:48.130Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>That's my bug, and a clear one: the <code>SET enable_external_access=false</code> lockdown is <strong>global and irreversible</strong>, so it poisons the database for every subsequent load. The first file in a page session works; every one after it fails — including switching between the URL and file paths.</p>
+<p>My integration test only ever loaded once, so it never caught this. Let me reproduce it before fixing:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-50-50-970Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-50-50-970Z" class="timestamp-link"><time datetime="2026-09-08T01:50:50.970Z" data-timestamp="2026-09-08T01:50:50.970Z">2026-09-08T01:50:50.970Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_0174At8BJFASBzCJnSEbKoAD">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Inspect duckdb open/reset API</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== AsyncDuckDB open/reset API ===&#34;
+grep -n &#34;open(\|reset(\|terminate(\|dropFiles&#34; node_modules/@duckdb/duckdb-wasm/dist/types/src/parallel/async_bindings.d.ts | head
+echo &#34;=== blocking bindings ===&#34;
+grep -n &#34;open(\|reset(\|terminate(&#34; node_modules/@duckdb/duckdb-wasm/dist/types/src/bindings/bindings_base.d.ts | head
+echo &#34;=== DuckDBConfig ===&#34;
+sed -n &#39;1,60p&#39; node_modules/@duckdb/duckdb-wasm/dist/types/src/bindings/config.d.ts</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-50-51-119Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-50-51-119Z" class="timestamp-link"><time datetime="2026-09-08T01:50:51.119Z" data-timestamp="2026-09-08T01:50:51.119Z">2026-09-08T01:50:51.119Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== AsyncDuckDB open/reset API ===
+48:    terminate(): Promise&lt;void&gt;;
+60:    reset(): Promise&lt;null&gt;;
+66:    dropFiles(names?: string[]): Promise&lt;null&gt;;
+76:    open(config: DuckDBConfig): Promise&lt;void&gt;;
+=== blocking bindings ===
+52:    open(config: DuckDBConfig): void;
+54:    reset(): void;
+=== DuckDBConfig ===
+export interface DuckDBQueryConfig {
+    /**
+     * The polling interval for queries
+     */
+    queryPollingInterval?: number;
+    /**
+     * Cast BigInt to Double?
+     */
+    castBigIntToDouble?: boolean;
+    /**
+     * Cast Timestamp to Date64?
+     */
+    castTimestampToDate?: boolean;
+    /**
+     * Cast Timestamp to Date64?
+     */
+    castDurationToTime64?: boolean;
+    /**
+     * Cast Decimal to Double?
+     */
+    castDecimalToDouble?: boolean;
+}
+export interface DuckDBFilesystemConfig {
+    reliableHeadRequests?: boolean;
+    /**
+     * Allow falling back to full HTTP reads if the server does not support range requests.
+     */
+    allowFullHTTPReads?: boolean;
+    /**
+     * Force use of full HTTP reads, suppressing range requests.
+     */
+    forceFullHTTPReads?: boolean;
+}
+export interface DuckDBOPFSConfig {
+    /**
+     * Defines how `opfs://` files are handled during SQL execution.
+     * - &quot;auto&quot;: Automatically register `opfs://` files and drop them after execution.
+     * - &quot;manual&quot;: Files must be manually registered and dropped.
+     */
+    fileHandling?: &quot;auto&quot; | &quot;manual&quot;;
+}
+export declare enum DuckDBAccessMode {
+    UNDEFINED = 0,
+    AUTOMATIC = 1,
+    READ_ONLY = 2,
+    READ_WRITE = 3
+}
+export interface DuckDBConfig {
+    /**
+     * The database path
+     */
+    path?: string;
+    /**
+     * The access mode
+     */
+    accessMode?: DuckDBAccessMode;
+    /**
+     * The maximum number of threads.
+     * Note that this will only work with cross-origin isolated sites since it requires SharedArrayBuffers.
+     */</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-50-54-218Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-50-54-218Z" class="timestamp-link"><time datetime="2026-09-08T01:50:54.218Z" data-timestamp="2026-09-08T01:50:54.218Z">2026-09-08T01:50:54.218Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-50-55-039Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-50-55-039Z" class="timestamp-link"><time datetime="2026-09-08T01:50:55.039Z" data-timestamp="2026-09-08T01:50:55.039Z">2026-09-08T01:50:55.039Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>There's both <code>reset()</code> and <code>open(config)</code>. Writing a failing test that reproduces your exact error, then checking which recovery actually works:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-51-02-500Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-51-02-500Z" class="timestamp-link"><time datetime="2026-09-08T01:51:02.500Z" data-timestamp="2026-09-08T01:51:02.500Z">2026-09-08T01:51:02.500Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01XFnVGK8ELupUwNbGNzpVoD">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Reproduce the double-load failure</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+cat &gt; test/repro.test.ts &lt;&lt;&#39;EOF&#39;
+import { it, expect } from &#34;vitest&#34;;
+import { createTestDb } from &#34;./helpers/duckdb&#34;;
+import { loadIntoDuckDB } from &#34;@/lib/duckdb/load&#34;;
+import { writeFileSync, mkdtempSync, readFileSync } from &#34;node:fs&#34;;
+import { tmpdir } from &#34;node:os&#34;;
+import path from &#34;node:path&#34;;
+import { CSV_FIXTURE } from &#34;./fixtures&#34;;
+
+it(&#34;repro: second load after lockdown&#34;, async () =&gt; {
+  const dir = mkdtempSync(path.join(tmpdir(), &#34;repro-&#34;));
+  const csv = path.join(dir, &#34;f.csv&#34;);
+  writeFileSync(csv, CSV_FIXTURE);
+  const bytes = new Uint8Array(readFileSync(csv));
+
+  const { db } = await createTestDb();
+  const notes: string[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const first = await loadIntoDuckDB(db as any, { bytes, format: &#34;csv&#34;, label: &#34;a&#34; });
+  notes.push(`first: ok rows=${first.rowCount} lockedDown=${first.externalAccessDisabled}`);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const second = await loadIntoDuckDB(db as any, { bytes, format: &#34;csv&#34;, label: &#34;b&#34; });
+    notes.push(`second: ok rows=${second.rowCount}`);
+  } catch (e) {
+    notes.push(`second: FAILED -&gt; ${(e as Error).message.split(&#34;\n&#34;)[0]}`);
+  }
+
+  // Does reset() restore external access?
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = (db as any).__bindings;
+  notes.push(`bindings exposed: ${Boolean(raw)}`);
+
+  throw new Error(&#34;REPRO &#34; + notes.join(&#34; || &#34;));
+}, 180_000);
+EOF
+npx vitest run test/repro.test.ts 2&gt;&amp;1 | grep -o &#34;REPRO.*&#34; | head -2</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-51-05-610Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-51-05-610Z" class="timestamp-link"><time datetime="2026-09-08T01:51:05.610Z" data-timestamp="2026-09-08T01:51:05.610Z">2026-09-08T01:51:05.610Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>REPRO first: ok rows=6 lockedDown=true || second: FAILED -&gt; Permission Error: Cannot access file &quot;source_input&quot; - file system operations are disabled by configuration || bindings exposed: false
+REPRO &quot; + notes.join(&quot; || &quot;));</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-51-08-372Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-51-08-372Z" class="timestamp-link"><time datetime="2026-09-08T01:51:08.372Z" data-timestamp="2026-09-08T01:51:08.372Z">2026-09-08T01:51:08.372Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-51-08-788Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-51-08-788Z" class="timestamp-link"><time datetime="2026-09-08T01:51:08.788Z" data-timestamp="2026-09-08T01:51:08.788Z">2026-09-08T01:51:08.788Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Reproduced exactly — your error message, verbatim. Now testing which recovery restores external access:</p></div></div></div>
+<div class="message user" id="msg-2026-09-08T01-51-11-493Z"><div class="message-header"><span class="role-label">User</span><a href="#msg-2026-09-08T01-51-11-493Z" class="timestamp-link"><time datetime="2026-09-08T01:51:11.493Z" data-timestamp="2026-09-08T01:51:11.493Z">2026-09-08T01:51:11.493Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>[Request interrupted by user]</p></div></div></div>
+<div class="message user" id="msg-2026-09-08T01-51-20-118Z"><div class="message-header"><span class="role-label">User</span><a href="#msg-2026-09-08T01-51-20-118Z" class="timestamp-link"><time datetime="2026-09-08T01:51:20.118Z" data-timestamp="2026-09-08T01:51:20.118Z">2026-09-08T01:51:20.118Z</time></a></div><div class="message-content">
+<div class="user-content"><p>don't repro -- just make the fix directly</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-51-55-131Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-51-55-131Z" class="timestamp-link"><time datetime="2026-09-08T01:51:55.131Z" data-timestamp="2026-09-08T01:51:55.131Z">2026-09-08T01:51:55.131Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-51-55-853Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-51-55-853Z" class="timestamp-link"><time datetime="2026-09-08T01:51:55.853Z" data-timestamp="2026-09-08T01:51:55.853Z">2026-09-08T01:51:55.853Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Right — I have the cause and the exact failure. Fixing directly.</p>
+<p>The lockdown is a global, irreversible DuckDB setting, so the database has to be re-opened before each load rather than reused:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-05-168Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-05-168Z" class="timestamp-link"><time datetime="2026-09-08T01:52:05.168Z" data-timestamp="2026-09-08T01:52:05.168Z">2026-09-08T01:52:05.168Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01Dt9tNCZZ2BaVGSY7LPPfEd">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Re-open database before each load</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+rm -f test/repro.test.ts
+
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;lib/duckdb/load.ts&#34;)
+s = p.read_text()
+
+old = &#34;&#34;&#34;export async function loadIntoDuckDB(
+  db: duckdb.AsyncDuckDB,
+  opts: { bytes: Uint8Array; format: SourceFormat; label: string },
+): Promise&lt;LoadedTable&gt; {
+  const file = &#34;source_input&#34;;
+  await db.dropFiles();
+  await db.registerFileBuffer(file, opts.bytes);&#34;&#34;&#34;
+
+new = &#34;&#34;&#34;export async function loadIntoDuckDB(
+  db: duckdb.AsyncDuckDB,
+  opts: { bytes: Uint8Array; format: SourceFormat; label: string },
+): Promise&lt;LoadedTable&gt; {
+  const file = &#34;source_input&#34;;
+
+  // Re-open the database first. `enable_external_access=false` (see lockDown
+  // below) is global to the database and cannot be switched back on, so a
+  // database that has already loaded one dataset can never read another file --
+  // every load after the first failed with &#34;file system operations are disabled
+  // by configuration&#34;. Re-opening gives a fresh database with default settings,
+  // and unlike terminating the worker it does not recompile the 34 MiB module.
+  //
+  // Any connection held from a previous dataset is invalidated by this, so
+  // callers must close theirs before calling and reconnect afterwards.
+  await db.open({});
+
+  await db.dropFiles();
+  await db.registerFileBuffer(file, opts.bytes);&#34;&#34;&#34;
+assert old in s, &#34;load signature not found&#34;
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched load.ts&#34;)
+PY
+
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;app/page.tsx&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;      setStatus(&#34;Loading into DuckDB…&#34;);
+      const table = await loadIntoDuckDB(db, { bytes, format, label });
+      setLoaded(table);
+
+      connRef.current?.close();
+      connRef.current = await db.connect();&#34;&#34;&#34;
+new = &#34;&#34;&#34;      setStatus(&#34;Loading into DuckDB…&#34;);
+      // loadIntoDuckDB re-opens the database, which invalidates any connection
+      // held for the previous dataset, so release it first.
+      if (connRef.current) {
+        await connRef.current.close();
+        connRef.current = null;
+      }
+      const table = await loadIntoDuckDB(db, { bytes, format, label });
+      setLoaded(table);
+      connRef.current = await db.connect();&#34;&#34;&#34;
+assert old in s, &#34;ingest block not found&#34;
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched page.tsx&#34;)
+PY
+npx tsc --noEmit 2&gt;&amp;1 | head; echo &#34;typecheck exit=$?&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-52-08-618Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-52-08-618Z" class="timestamp-link"><time datetime="2026-09-08T01:52:08.618Z" data-timestamp="2026-09-08T01:52:08.618Z">2026-09-08T01:52:08.618Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched load.ts
+patched page.tsx
+typecheck exit=0</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-10-816Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-10-816Z" class="timestamp-link"><time datetime="2026-09-08T01:52:10.816Z" data-timestamp="2026-09-08T01:52:10.816Z">2026-09-08T01:52:10.816Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Now updating the test harness to match the real lifecycle, and adding the regression test that was missing:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-21-839Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-21-839Z" class="timestamp-link"><time datetime="2026-09-08T01:52:21.839Z" data-timestamp="2026-09-08T01:52:21.839Z">2026-09-08T01:52:21.839Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_011S9UhRwHNoJncfwuW5AkFf">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Update test harness for the new lifecycle</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;test/helpers/duckdb.ts&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;export interface TestDb {
+  db: unknown;
+  conn: TestConn;
+}
+
+export async function createTestDb(): Promise&lt;TestDb&gt; {
+  const { bindings, conn } = await createBindings();
+  const asyncLike = {
+    dropFiles: async () =&gt; bindings.dropFiles(),
+    dropFile: async (name: string) =&gt; bindings.dropFile(name),
+    registerFileBuffer: async (name: string, buffer: Uint8Array) =&gt;
+      bindings.registerFileBuffer(name, buffer),
+    connect: async () =&gt; ({
+      query: async (sql: string) =&gt; conn.query(sql),
+      close: async () =&gt; {},
+    }),
+  };
+  return { db: asyncLike, conn: { query: async (sql: string) =&gt; conn.query(sql), close: () =&gt; conn.close() } };
+}&#34;&#34;&#34;
+new = &#34;&#34;&#34;export interface TestDb {
+  /** Shaped like AsyncDuckDB, enough for lib/duckdb/load.ts. */
+  db: unknown;
+  /** Open a fresh connection. Do this AFTER loading: loadIntoDuckDB re-opens
+   *  the database, which invalidates connections taken before it. */
+  connect(): Promise&lt;TestConn&gt;;
+}
+
+export async function createTestDb(): Promise&lt;TestDb&gt; {
+  const { bindings } = await createBindings();
+
+  const asyncLike = {
+    open: async (config: unknown) =&gt; bindings.open(config),
+    reset: async () =&gt; bindings.reset(),
+    dropFiles: async () =&gt; bindings.dropFiles(),
+    dropFile: async (name: string) =&gt; bindings.dropFile(name),
+    registerFileBuffer: async (name: string, buffer: Uint8Array) =&gt;
+      bindings.registerFileBuffer(name, buffer),
+    connect: async () =&gt; {
+      const c = bindings.connect();
+      return { query: async (sql: string) =&gt; c.query(sql), close: async () =&gt; c.close() };
+    },
+  };
+
+  return {
+    db: asyncLike,
+    connect: async () =&gt; {
+      const c = bindings.connect();
+      return { query: async (sql: string) =&gt; c.query(sql), close: () =&gt; c.close() };
+    },
+  };
+}&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched helper&#34;)
+PY
+
+python3 - &lt;&lt;&#39;PY&#39;
+import pathlib
+p = pathlib.Path(&#34;test/integration.test.ts&#34;)
+s = p.read_text()
+old = &#34;&#34;&#34;  const { db, conn: c } = await createTestDb();
+  conn = c;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  loaded = await loadIntoDuckDB(db as any, {
+    bytes,
+    format: &#34;parquet&#34;,
+    label: &#34;lineitem.parquet&#34;,
+  });&#34;&#34;&#34;
+new = &#34;&#34;&#34;  const testDb = await createTestDb();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  loaded = await loadIntoDuckDB(testDb.db as any, {
+    bytes,
+    format: &#34;parquet&#34;,
+    label: &#34;lineitem.parquet&#34;,
+  });
+  // After the load, because loadIntoDuckDB re-opens the database.
+  conn = await testDb.connect();&#34;&#34;&#34;
+assert old in s
+p.write_text(s.replace(old, new, 1))
+print(&#34;patched integration test&#34;)
+PY
+npx tsc --noEmit 2&gt;&amp;1 | head; echo &#34;exit=$?&#34;</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-52-24-672Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-52-24-672Z" class="timestamp-link"><time datetime="2026-09-08T01:52:24.672Z" data-timestamp="2026-09-08T01:52:24.672Z">2026-09-08T01:52:24.672Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>patched helper
+patched integration test
+exit=0</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-41-309Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-41-309Z" class="timestamp-link"><time datetime="2026-09-08T01:52:41.309Z" data-timestamp="2026-09-08T01:52:41.309Z">2026-09-08T01:52:41.309Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01WxbFH7XUndPSBtmWsGrmMn">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Add and run reload regression tests</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+cat &gt; test/reload.test.ts &lt;&lt;&#39;EOF&#39;
+import { describe, it, expect } from &#34;vitest&#34;;
+import { writeFileSync, mkdtempSync } from &#34;node:fs&#34;;
+import { tmpdir } from &#34;node:os&#34;;
+import path from &#34;node:path&#34;;
+import { createTestDb } from &#34;./helpers/duckdb&#34;;
+import { loadIntoDuckDB } from &#34;@/lib/duckdb/load&#34;;
+import { CSV_FIXTURE } from &#34;./fixtures&#34;;
+
+const encode = (s: string) =&gt; new TextEncoder().encode(s);
+
+const SECOND_DATASET = `sku,price,in_stock
+A-1,9.99,true
+A-2,19.50,false
+A-3,4.25,true
+`;
+
+describe(&#34;loading more than one dataset in a session&#34;, () =&gt; {
+  it(&#34;loads a second file after the first has locked the database down&#34;, async () =&gt; {
+    // Regression: enable_external_access=false is global and irreversible, so
+    // reusing the database made every load after the first fail with
+    // &#34;file system operations are disabled by configuration&#34;. Switching
+    // datasets is the normal way to use this tool, so it has to keep working.
+    const dir = mkdtempSync(path.join(tmpdir(), &#34;reload-&#34;));
+    writeFileSync(path.join(dir, &#34;a.csv&#34;), CSV_FIXTURE);
+
+    const testDb = await createTestDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = testDb.db as any;
+
+    const first = await loadIntoDuckDB(db, {
+      bytes: encode(CSV_FIXTURE), format: &#34;csv&#34;, label: &#34;a.csv&#34;,
+    });
+    expect(first.rowCount).toBe(6);
+    expect(first.externalAccessDisabled).toBe(true);
+
+    // The load that used to throw.
+    const second = await loadIntoDuckDB(db, {
+      bytes: encode(SECOND_DATASET), format: &#34;csv&#34;, label: &#34;b.csv&#34;,
+    });
+    expect(second.rowCount).toBe(3);
+    expect(second.columns.map((c) =&gt; c.name)).toEqual([&#34;sku&#34;, &#34;price&#34;, &#34;in_stock&#34;]);
+
+    // And a third, to be sure it is not a one-shot recovery.
+    const third = await loadIntoDuckDB(db, {
+      bytes: encode(CSV_FIXTURE), format: &#34;csv&#34;, label: &#34;c.csv&#34;,
+    });
+    expect(third.rowCount).toBe(6);
+  }, 180_000);
+
+  it(&#34;re-locks the database on every load, not just the first&#34;, async () =&gt; {
+    // Re-opening restores external access, so the lockdown must be re-applied
+    // each time or the second dataset would be evaluated unprotected.
+    const testDb = await createTestDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = testDb.db as any;
+
+    await loadIntoDuckDB(db, { bytes: encode(CSV_FIXTURE), format: &#34;csv&#34;, label: &#34;a&#34; });
+    const second = await loadIntoDuckDB(db, {
+      bytes: encode(SECOND_DATASET), format: &#34;csv&#34;, label: &#34;b&#34;,
+    });
+    expect(second.externalAccessDisabled).toBe(true);
+
+    const conn = await testDb.connect();
+    await expect(
+      conn.query(`SELECT count(*) FROM read_csv_auto(&#39;https://example.com/x.csv&#39;)`),
+    ).rejects.toThrow();
+    conn.close();
+  }, 180_000);
+
+  it(&#34;leaves no rows of the previous dataset behind&#34;, async () =&gt; {
+    const testDb = await createTestDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = testDb.db as any;
+
+    await loadIntoDuckDB(db, { bytes: encode(CSV_FIXTURE), format: &#34;csv&#34;, label: &#34;a&#34; });
+    await loadIntoDuckDB(db, { bytes: encode(SECOND_DATASET), format: &#34;csv&#34;, label: &#34;b&#34; });
+
+    const conn = await testDb.connect();
+    const cols = (await conn.query(`DESCRIBE data`)).toArray().map(
+      (r) =&gt; (r.toJSON() as { column_name: string }).column_name,
+    );
+    expect(cols).toEqual([&#34;sku&#34;, &#34;price&#34;, &#34;in_stock&#34;]);
+    expect(cols).not.toContain(&#34;email&#34;);
+    conn.close();
+  }, 180_000);
+});
+EOF
+npx vitest run test/reload.test.ts 2&gt;&amp;1 | tail -20</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-52-47-134Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-52-47-134Z" class="timestamp-link"><time datetime="2026-09-08T01:52:47.134Z" data-timestamp="2026-09-08T01:52:47.134Z">2026-09-08T01:52:47.134Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre> RUN  v4.1.11 /Users/dj/workspace/duck-invariant
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  21:52:45
+   Duration  1.69s (transform 77ms, setup 0ms, import 100ms, tests 1.49s, environment 0ms)</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-51-252Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-51-252Z" class="timestamp-link"><time datetime="2026-09-08T01:52:51.252Z" data-timestamp="2026-09-08T01:52:51.252Z">2026-09-08T01:52:51.252Z</time></a></div><div class="message-content">
+<div class="thinking"><div class="thinking-label">Thinking</div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-52-072Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-52-072Z" class="timestamp-link"><time datetime="2026-09-08T01:52:52.072Z" data-timestamp="2026-09-08T01:52:52.072Z">2026-09-08T01:52:52.072Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>The fix works, and critically the lockdown still re-applies on every load — so the second dataset isn't left unprotected. Full verification:</p></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-52-53-648Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-52-53-648Z" class="timestamp-link"><time datetime="2026-09-08T01:52:53.648Z" data-timestamp="2026-09-08T01:52:53.648Z">2026-09-08T01:52:53.648Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01VP6UsMw68hiNneRNACHooB">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Full verification after fix</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+echo &#34;=== full suite ===&#34;
+npx vitest run 2&gt;&amp;1 | tail -10
+echo &#34;=== types ===&#34;; npx tsc --noEmit &amp;&amp; echo clean
+echo &#34;=== lint ===&#34;; npm run lint 2&gt;&amp;1 | tail -2
+echo &#34;=== build ===&#34;; npm run build 2&gt;&amp;1 | grep -E &#34;Compiled|Route|✓ Gen&#34; | tail -4</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-53-06-030Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-53-06-030Z" class="timestamp-link"><time datetime="2026-09-08T01:53:06.030Z" data-timestamp="2026-09-08T01:53:06.030Z">2026-09-08T01:53:06.030Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>=== full suite ===
+
+ RUN  v4.1.11 /Users/dj/workspace/duck-invariant
+
+
+ Test Files  7 passed (7)
+      Tests  54 passed (54)
+   Start at  21:52:55
+   Duration  3.06s (transform 346ms, setup 0ms, import 648ms, tests 6.72s, environment 0ms)
+
+=== types ===
+clean
+=== lint ===
+&gt; eslint
+
+=== build ===
+✓ Compiled successfully in 603ms
+✓ Generating static pages using 5 workers (4/4) in 312ms
+Route (app)</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-53-15-791Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-53-15-791Z" class="timestamp-link"><time datetime="2026-09-08T01:53:15.791Z" data-timestamp="2026-09-08T01:53:15.791Z">2026-09-08T01:53:15.791Z</time></a></div><div class="message-content">
+<div class="tool-use bash-tool" data-tool-id="toolu_01GapfmfQm9iCkbtjFkSs2cu">
+<div class="tool-header"><span class="tool-icon">$</span> Bash</div>
+<div class="tool-description">Commit the fix</div><div class="truncatable"><div class="truncatable-content"><pre class="bash-command">cd /Users/dj/workspace/duck-invariant
+git add -A
+git status --short
+git commit -F - &lt;&lt;&#39;EOF&#39;
+Fix: only the first dataset per session could be loaded
+
+enable_external_access=false is global to the DuckDB database and cannot be
+switched back on. Because the database was reused across loads, the lockdown
+applied for one dataset poisoned every later one, and loading a second file --
+or switching between the URL and local-file paths -- failed with:
+
+  Permission Error: Cannot access file &#34;source_input&#34;
+  - file system operations are disabled by configuration
+
+Re-open the database at the start of each load. That restores default settings,
+and unlike terminating the worker it does not recompile the 34 MiB module. The
+lockdown is then re-applied per load, so the second dataset is protected exactly
+like the first. Re-opening invalidates connections, so page.tsx now releases the
+previous one before loading and reconnects afterwards.
+
+The integration test only ever loaded once, which is why this was missed. Added
+test/reload.test.ts covering a second and third load, that the lockdown is
+re-applied every time rather than only on the first, and that no rows of the
+previous dataset survive. Updated the test harness so connections are opened
+after loading, matching the real lifecycle.
+
+Co-Authored-By: Claude Opus 5 (1M context) &lt;noreply@anthropic.com&gt;
+Claude-Session: https://claude.ai/code/session_01DksYLLU65Wr3bKfqy5tjRn
+EOF
+echo &#34;=== log ===&#34;; git log --oneline -3</pre></div><button class="expand-btn">Show more</button></div>
+</div></div></div>
+<div class="message tool-reply" id="msg-2026-09-08T01-53-17-640Z"><div class="message-header"><span class="role-label">Tool reply</span><a href="#msg-2026-09-08T01-53-17-640Z" class="timestamp-link"><time datetime="2026-09-08T01:53:17.640Z" data-timestamp="2026-09-08T01:53:17.640Z">2026-09-08T01:53:17.640Z</time></a></div><div class="message-content"><div class="tool-result"><div class="truncatable"><div class="truncatable-content"><pre>M  app/page.tsx
+M  lib/duckdb/load.ts
+M  test/helpers/duckdb.ts
+M  test/integration.test.ts
+A  test/reload.test.ts</pre><div class="commit-card"><span class="commit-card-hash">dbbc55d</span> Fix: only the first dataset per session could be loaded</div><pre>5 files changed, 128 insertions(+), 12 deletions(-)
+ create mode 100644 test/reload.test.ts
+=== log ===
+dbbc55d Fix: only the first dataset per session could be loaded
+69b2ce6 demo data
+80a1b10 Add browser-based invariant detection over DuckDB-WASM</pre></div><button class="expand-btn">Show more</button></div></div></div></div>
+<div class="message assistant" id="msg-2026-09-08T01-53-27-224Z"><div class="message-header"><span class="role-label">Assistant</span><a href="#msg-2026-09-08T01-53-27-224Z" class="timestamp-link"><time datetime="2026-09-08T01:53:27.224Z" data-timestamp="2026-09-08T01:53:27.224Z">2026-09-08T01:53:27.224Z</time></a></div><div class="message-content">
+<div class="assistant-text"><p>Fixed and committed as <code>dbbc55d</code>.</p>
+<h2>What was wrong</h2>
+<p><code>SET enable_external_access=false</code> — the defence-in-depth lockdown I added so model-authored SQL can't reach a URL — is <strong>global to the DuckDB database and cannot be switched back on</strong>. Since the database was reused across loads, the lockdown applied for the first dataset poisoned every later one. So the first file in a page session worked, and everything after it hit your error, regardless of whether it came from a URL or a local file.</p>
+<p>The dev server hot-reloads, so it should already work — hard-refresh the tab to clear the poisoned engine from the old module instance.</p>
+<h2>The fix</h2>
+<p>Re-open the database at the start of each load. That restores default settings, and unlike terminating the worker it doesn't recompile the 34 MiB wasm module, so switching datasets stays fast. Re-opening invalidates open connections, so <code>page.tsx</code> now releases the previous one before loading and reconnects after.</p>
+<p>The important detail: <strong>the lockdown is re-applied on every load</strong>, not just the first. Otherwise the fix would have quietly traded your bug for a worse one — the second dataset evaluated with external access left on. There's a test asserting a remote read still fails after the <em>second</em> load specifically.</p>
+<h2>Why my tests missed it</h2>
+<p>The integration test only ever loaded one file. Testing that the lockdown works is not the same as testing that the app still works afterwards, and I only wrote the first half. <code>test/reload.test.ts</code> now covers a second and third load, that the lockdown re-applies each time, and that no rows of the previous dataset survive into the next.</p>
+<p>54 tests, types and lint clean, build clean.</p>
+<p>Still outstanding from before: I can't drive the browser here, so the UI path is verified only through the Node harness running the same code. If you hit anything else, the error text is genuinely useful — that one named the exact failing statement.</p></div></div></div>
+        
+
+<div class="pagination">
+<a href="index.html" class="index-link">Index</a>
+<a href="page-002.html">&larr; Prev</a>
+<a href="page-001.html">1</a>
+<a href="page-002.html">2</a>
+<span class="current">3</span>
+<a href="page-004.html">4</a>
+<a href="page-005.html">5</a>
+<a href="page-006.html">6</a>
+<a href="page-007.html">7</a>
+<a href="page-008.html">8</a>
+<a href="page-004.html">Next &rarr;</a>
+</div>
+
+    </div>
+    <script>
+document.querySelectorAll('time[data-timestamp]').forEach(function(el) {
+    const timestamp = el.getAttribute('data-timestamp');
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    if (isToday) { el.textContent = timeStr; }
+    else { el.textContent = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + timeStr; }
+});
+document.querySelectorAll('pre.json').forEach(function(el) {
+    let text = el.textContent;
+    text = text.replace(/"([^"]+)":/g, '<span style="color: #ce93d8">"$1"</span>:');
+    text = text.replace(/: "([^"]*)"/g, ': <span style="color: #81d4fa">"$1"</span>');
+    text = text.replace(/: (\d+)/g, ': <span style="color: #ffcc80">$1</span>');
+    text = text.replace(/: (true|false|null)/g, ': <span style="color: #f48fb1">$1</span>');
+    el.innerHTML = text;
+});
+document.querySelectorAll('.truncatable').forEach(function(wrapper) {
+    const content = wrapper.querySelector('.truncatable-content');
+    const btn = wrapper.querySelector('.expand-btn');
+    if (content.scrollHeight > 250) {
+        wrapper.classList.add('truncated');
+        btn.addEventListener('click', function() {
+            if (wrapper.classList.contains('truncated')) { wrapper.classList.remove('truncated'); wrapper.classList.add('expanded'); btn.textContent = 'Show less'; }
+            else { wrapper.classList.remove('expanded'); wrapper.classList.add('truncated'); btn.textContent = 'Show more'; }
+        });
+    }
+});
+</script>
+</body>
+</html>
