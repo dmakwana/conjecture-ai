@@ -6,6 +6,14 @@ import { formatBytes } from "@/lib/sources/validate";
 import { ValidationChecklist } from "./ValidationChecklist";
 import { IconClose, IconPlus } from "./icons";
 
+/**
+ * A working example for the tip below. jsDelivr rather than raw.githubusercontent
+ * because it supports range requests and sends a real content type; the GitHub
+ * page URL serves HTML and would fail the format check.
+ */
+const EXAMPLE_URL =
+  "https://cdn.jsdelivr.net/npm/vega-datasets@3/data/seattle-weather.csv";
+
 export interface SourceSummary {
   id: string;
   table: string;
@@ -151,6 +159,31 @@ export function SourceManager({
             Parquet, CSV or JSON. Drop files anywhere; add several to test across them.
           </span>
         </div>
+      )}
+
+      {mode === "none" && (
+        <p className="muted text-xs leading-relaxed">
+          Looking for something to try?{" "}
+          <a
+            href="https://github.com/vega/vega-datasets/tree/main/data"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline underline-offset-2 hover:no-underline"
+          >
+            vega-datasets
+          </a>{" "}
+          has around sixty small public datasets. Browse there, then load the file
+          through its CDN rather than the GitHub page, which serves HTML:{" "}
+          <button
+            onClick={() => onAddUrl(EXAMPLE_URL)}
+            disabled={busy}
+            className="font-mono underline underline-offset-2 hover:no-underline disabled:opacity-40"
+            title="Load this dataset now"
+          >
+            {EXAMPLE_URL.replace("https://", "")}
+          </button>{" "}
+          Swap the filename for any other in that folder.
+        </p>
       )}
 
       {report && !report.ok && <ValidationChecklist checks={report.checks} />}

@@ -1,4 +1,7 @@
-import type { ViolationPreview } from "@/lib/hypotheses/evaluate";
+export interface ResultRows {
+  columns: string[];
+  rows: unknown[][];
+}
 
 function render(value: unknown): string {
   if (value === null || value === undefined) return "NULL";
@@ -6,8 +9,8 @@ function render(value: unknown): string {
   return String(value);
 }
 
-/** Violating rows are rendered from local DuckDB results and never transmitted. */
-export function ViolationTable({ preview }: { preview: ViolationPreview }) {
+/** Rows from a local DuckDB query. Never transmitted anywhere. */
+export function ResultTable({ preview }: { preview: ResultRows }) {
   return (
     <div className="overflow-x-auto rounded-md border hairline">
       <table className="text-xs font-mono border-collapse min-w-full">

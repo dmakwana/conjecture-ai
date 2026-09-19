@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Hypothesis, HypothesisResult, Severity } from "@/lib/hypotheses/schema";
 import { isCrossTable, tablesInCheck } from "@/lib/hypotheses/schema";
 import type { ViolationPreview } from "@/lib/hypotheses/evaluate";
-import { ViolationTable } from "./ViolationTable";
+import { ResultTable } from "./ResultTable";
 import { Spinner } from "./Spinner";
 import { IconCode, IconTable } from "./icons";
 
@@ -268,7 +268,7 @@ function RoundSection({
                         <p className="muted text-xs mb-1">
                           Shown from local DuckDB. These rows are not sent anywhere.
                         </p>
-                        <ViolationTable preview={preview} />
+                        <ResultTable preview={preview} />
                       </>
                     )}
                   </div>

@@ -26,7 +26,15 @@ import { ExchangePanel } from "@/components/ExchangePanel";
 import { SourceManager, type SourceSummary } from "@/components/SourceManager";
 import { DemoPicker } from "@/components/DemoPicker";
 import { ThinkingDots } from "@/components/Spinner";
-import { IconDownload } from "@/components/icons";
+import { IconCode, IconDownload } from "@/components/icons";
+import dynamic from "next/dynamic";
+
+// CodeMirror is browser-only and sizeable, so it is kept out of the initial
+// bundle and out of the prerender.
+const SqlConsole = dynamic(
+  () => import("@/components/SqlConsole").then((m) => m.SqlConsole),
+  { ssr: false },
+);
 import { DEFAULT_DEMO, demoById, type DemoId } from "@/lib/demo";
 
 interface Source extends SourceInput {
@@ -52,6 +60,7 @@ export default function Page() {
   const [rows, setRows] = useState<HypothesisRow[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [priorRounds, setPriorRounds] = useState<PriorRound[]>([]);
+  const [sqlOpen, setSqlOpen] = useState(false);
 
   const dbRef = useRef<duckdb.AsyncDuckDB | null>(null);
   const connRef = useRef<duckdb.AsyncDuckDBConnection | null>(null);
@@ -513,6 +522,16 @@ export default function Page() {
               </span>
             )}
 
+            {!busy && (
+              <button
+                onClick={() => setSqlOpen(true)}
+                className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
+              >
+                <IconCode />
+                SQL Console
+              </button>
+            )}
+
             {rows.length > 0 && !busy && (
               <button
                 onClick={downloadReport}
@@ -536,6 +555,18 @@ export default function Page() {
             )}
           </div>
         </>
+      )}
+
+      {loaded && (
+        <SqlConsole
+          open={sqlOpen}
+          onClose={() => setSqlOpen(false)}
+          getDb={() => dbRef.current}
+          loaded={loaded}
+          ranQueries={rows
+            .filter((r) => r.result?.sql)
+            .map((r) => ({ title: r.hypothesis.title, sql: r.result!.sql! }))}
+        />
       )}
 
       {exchanges.length > 0 && <ExchangePanel exchanges={exchanges} />}

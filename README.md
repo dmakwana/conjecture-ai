@@ -244,6 +244,22 @@ local storage, no session storage, no URL state and no server-side record; every
 React state in the open tab. If the page reloads, the DuckDB instance is rebuilt from scratch and
 your sources have to be loaded again. A saved report is the only record that outlives the tab.
 
+## SQL console
+
+**SQL Console** opens a DuckDB console over the tables you loaded, built on CodeMirror with the
+SQL language mode, so it has highlighting and completion against your real column names.
+
+It opens seeded rather than blank: the tables and their columns are listed, and every check the
+run has already executed is included commented out, so a falsified result can be taken apart by
+uncommenting it rather than retyped from the summary. `Cmd`/`Ctrl`+`Enter` runs the statement under
+the cursor, or the selection; splitting on `;` skips semicolons inside string literals, quoted
+identifiers, comments and dollar-quoted blocks, which matters precisely because the buffer arrives
+full of comments.
+
+Nothing here weakens the guarantees. The console runs against the same locked-down database, so
+`enable_external_access=false` applies to whatever you type as much as to anything the model
+writes: a query in the console cannot reach a file or a URL either.
+
 ## Keeping it off search engines and AI crawlers
 
 Four layers, in descending order of how much they are actually worth:
@@ -291,7 +307,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-130 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+145 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 
