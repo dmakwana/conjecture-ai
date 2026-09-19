@@ -26,6 +26,7 @@ import { ExchangePanel } from "@/components/ExchangePanel";
 import { SourceManager, type SourceSummary } from "@/components/SourceManager";
 import { DemoPicker } from "@/components/DemoPicker";
 import { ThinkingDots } from "@/components/Spinner";
+import { IconDownload } from "@/components/icons";
 import { DEFAULT_DEMO, demoById, type DemoId } from "@/lib/demo";
 
 interface Source extends SourceInput {
@@ -402,8 +403,9 @@ export default function Page() {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">duck-invariant</h1>
         <p className="muted text-sm mt-1">
-          Profile your data in the browser, then test falsifiable hypotheses about it.
-          The data never leaves this page.
+          Profile your data, then test falsifiable hypotheses about it. Everything runs
+          entirely in your browser — nothing is uploaded, and your data never leaves this
+          page.
         </p>
       </header>
 
@@ -419,7 +421,7 @@ export default function Page() {
               mode === m ? "panel font-medium" : "muted hover:underline"
             }`}
           >
-            {m === "demo" ? "Demo data" : "Your own data"}
+            {m === "demo" ? "Demo Data" : "Your Own Data"}
           </button>
         ))}
       </nav>
@@ -489,9 +491,10 @@ export default function Page() {
             {rows.length > 0 && !busy && (
               <button
                 onClick={downloadReport}
-                className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
+                className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
               >
-                Export report
+                <IconDownload />
+                Export Report
               </button>
             )}
 

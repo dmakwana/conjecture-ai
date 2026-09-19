@@ -34,7 +34,7 @@ known-good, so they skip the CORS and format checks that user-supplied URLs go t
 
 | | Tables | Rows | What it is good at showing |
 |---|---|---|---|
-| **Commerce** (default) | 8 | 258k | Referential integrity across orders, items, payments and refunds — and whether the denormalised `orders_flat` still agrees with the tables it was built from |
+| **Commerce** (default) | 7 | 185k | Referential integrity across orders, items, payments and refunds, and the arithmetic that should reconcile between them |
 | **Flights** | 1 | 91k | Arithmetic that should reconcile: delay causes summing to the total, elapsed time against air time plus taxiing, what a cancelled flight may record |
 | **Power** | 1 | 89k | Sensor and pipeline faults: negative sub-meter readings, implausible draw, sub-meters exceeding the total |
 
@@ -228,9 +228,13 @@ stream. If the threaded build is ever enabled it becomes real parallelism with n
 ## Reading and keeping the results
 
 Rounds are shown one at a time, newest first, with tabs across the top carrying a count of what
-each one falsified. Reading a finished round while a new one is still running does not move you.
+each one falsified.
 
-**Export report** downloads the whole run as a single Markdown file: every table loaded, a summary,
+**Inspect Prompt** and **Inspect Exchange** open modals rather than expanding the page: the first
+shows the exact request body before anything is sent, the second the verbatim transcript of every
+round.
+
+**Export Report** downloads the whole run as a single Markdown file: every table loaded, a summary,
 and each hypothesis with its verdict, violation count and share, duration, rationale, the check as
 written, and the SQL that produced it folded into a `<details>` block. Violating-row previews are
 deliberately left out — they are the one thing that was never meant to travel.
@@ -287,7 +291,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-117 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+118 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 

@@ -2,6 +2,7 @@
 
 import { DEMO_DATASETS, type DemoId } from "@/lib/demo";
 import { formatBytes } from "@/lib/sources/validate";
+import { IconCheck } from "./icons";
 
 /**
  * The landing experience. A curated dataset is pre-selected so the tool can be
@@ -45,9 +46,10 @@ export function DemoPicker({
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-medium text-sm">{d.name}</span>
                 {loadedId === d.id && (
-                  <span className="text-emerald-600 dark:text-emerald-400 text-xs">
-                    loaded
-                  </span>
+                  <IconCheck
+                    className="text-emerald-600 dark:text-emerald-400"
+                    title={`${d.name} is loaded`}
+                  />
                 )}
               </div>
               <div className="muted text-xs mt-0.5">
@@ -73,9 +75,7 @@ export function DemoPicker({
           >
             {isLoaded ? `${dataset.name} loaded` : `Load ${dataset.name}`}
           </button>
-          <span className="muted text-xs">
-            Runs entirely in your browser. Nothing is uploaded.
-          </span>
+
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ValidationReport } from "@/lib/sources/validate";
 import { formatBytes } from "@/lib/sources/validate";
 import { ValidationChecklist } from "./ValidationChecklist";
+import { IconClose, IconPlus } from "./icons";
 
 export interface SourceSummary {
   id: string;
@@ -83,10 +84,11 @@ export function SourceManager({
               <button
                 onClick={() => onRemove(s.id)}
                 disabled={busy}
-                className="muted text-xs underline underline-offset-2 hover:no-underline disabled:opacity-40"
+                className="muted rounded p-1 hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40"
                 aria-label={`Remove ${s.table}`}
+                title={`Remove ${s.table}`}
               >
-                remove
+                <IconClose className="w-3 h-3" />
               </button>
             </li>
           ))}
@@ -118,7 +120,7 @@ export function SourceManager({
             onClick={() => setMode("none")}
             className="muted rounded-md px-2 py-2 text-sm hover:underline"
           >
-            cancel
+            Cancel
           </button>
         </div>
       ) : (
@@ -126,16 +128,16 @@ export function SourceManager({
           <button
             onClick={() => setMode("url")}
             disabled={busy}
-            className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
+            className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
           >
-            + From a URL
+            <IconPlus /> From a URL
           </button>
           <button
             onClick={() => fileInput.current?.click()}
             disabled={busy}
-            className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
+            className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30 disabled:opacity-40"
           >
-            + From a file
+            <IconPlus /> From a file
           </button>
           <input
             ref={fileInput}
@@ -150,14 +152,14 @@ export function SourceManager({
             }}
           />
           <span className="muted text-xs">
-            Parquet, CSV or JSON · drop files anywhere · add several to test across them
+            Parquet, CSV or JSON. Drop files anywhere; add several to test across them.
           </span>
         </div>
       )}
 
       {sources.length === 0 && mode === "none" && (
         <p className="muted text-xs">
-          or try{" "}
+          Or try{" "}
           {DEMO.map((d, i) => (
             <span key={d.url}>
               {i > 0 && " and "}
@@ -170,7 +172,7 @@ export function SourceManager({
               </button>
             </span>
           ))}{" "}
-          — load both to see cross-table checks
+          — load both to see cross-table checks.
         </p>
       )}
 

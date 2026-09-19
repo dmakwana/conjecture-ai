@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Exchange } from "@/lib/hypotheses/schema";
+import { Modal } from "./Modal";
+import { IconInspect } from "./icons";
 
 type Tab = "request" | "response";
 
@@ -15,7 +17,6 @@ export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
   const [tab, setTab] = useState<Tab>("response");
   const [round, setRound] = useState(0);
 
-  // Default to the newest round whenever one arrives.
   const index = Math.min(round, exchanges.length - 1);
   const exchange = exchanges[index];
   const totalAttempts = exchanges.reduce((n, e) => n + e.httpAttempts, 0);
@@ -33,88 +34,85 @@ export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
           </span>
         </div>
         <button
-          onClick={() => setOpen((v) => !v)}
-          className="text-sm underline underline-offset-2 hover:no-underline"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm panel hover:ring-2 hover:ring-blue-500/30"
         >
-          {open ? "hide" : "read it"}
+          <IconInspect />
+          Inspect Exchange
         </button>
       </header>
 
-      {retried && (
-        <p className="muted text-xs px-4 pb-2">
-          More than one request means the SDK resent the same query after a
-          transient failure — not an extra question.
-        </p>
-      )}
-
-      {open && (
-        <div className="border-t hairline">
-          {exchanges.length > 1 && (
-            <div className="flex gap-1 px-4 pt-3 text-sm items-baseline">
-              <span className="muted text-xs mr-1">round</span>
-              {exchanges.map((e, i) => (
-                <button
-                  key={e.round}
-                  onClick={() => setRound(i)}
-                  className={`px-2 py-0.5 rounded text-xs ${
-                    i === index ? "panel font-medium" : "muted"
-                  }`}
-                >
-                  {e.round}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <p className="muted text-xs px-4 pt-2">
-            Round {exchange.round} · {exchange.inputTokens.toLocaleString()} in /{" "}
-            {exchange.outputTokens.toLocaleString()} out ·{" "}
-            {(exchange.latencyMs / 1000).toFixed(1)}s ·{" "}
-            {exchange.httpAttempts} HTTP request
-            {exchange.httpAttempts === 1 ? "" : "s"}
-          </p>
-
-          <div className="flex gap-1 px-4 pt-3 text-sm">
-            {(["request", "response"] as Tab[]).map((t) => (
+      <Modal
+        open={open}
+        title="Inspect Exchange"
+        subtitle="Recorded verbatim — exactly what was asked, and exactly what came back."
+        onClose={() => setOpen(false)}
+      >
+        {exchanges.length > 1 && (
+          <div className="flex items-center gap-1 mb-3">
+            <span className="muted text-xs mr-1">Round</span>
+            {exchanges.map((e, i) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-3 py-1 rounded-t-md ${
-                  tab === t ? "panel border-b-0 font-medium" : "muted"
+                key={e.round}
+                onClick={() => setRound(i)}
+                aria-pressed={i === index}
+                className={`px-2.5 py-1 rounded text-sm ${
+                  i === index ? "panel font-medium ring-1 ring-blue-500/40" : "muted"
                 }`}
               >
-                {t}
+                {e.round}
               </button>
             ))}
           </div>
+        )}
 
-          <div className="px-4 pb-4">
-            {tab === "request" ? (
-              <>
-                <p className="muted text-xs my-2">
-                  Sent verbatim. No cell values, and no tools are declared, so the model
-                  cannot ask for a second turn.
-                  {exchange.round > 1 &&
-                    " Earlier rounds' verdicts are included as counts and percentages only."}
-                </p>
-                <Block label="system" body={exchange.system} />
-                <Block label="user" body={exchange.userMessage} />
-              </>
-            ) : (
-              <>
-                <p className="muted text-xs my-2">
-                  The model&apos;s structured output, exactly as returned
-                  {exchange.stopReason ? ` (stop_reason: ${exchange.stopReason})` : ""}.
-                  {" "}
-                  {exchange.hypothesesReturned} hypothes
-                  {exchange.hypothesesReturned === 1 ? "is" : "es"} returned.
-                </p>
-                <Block label="response" body={exchange.responseJson} />
-              </>
-            )}
-          </div>
+        <p className="muted text-xs mb-3">
+          Round {exchange.round} · {exchange.inputTokens.toLocaleString()} in /{" "}
+          {exchange.outputTokens.toLocaleString()} out ·{" "}
+          {(exchange.latencyMs / 1000).toFixed(1)}s · {exchange.httpAttempts} HTTP
+          request{exchange.httpAttempts === 1 ? "" : "s"}
+          {retried &&
+            " — more than one means the same query was resent after a transient failure, not a second question."}
+        </p>
+
+        <div className="flex gap-1 mb-3">
+          {(["request", "response"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              aria-pressed={tab === t}
+              className={`px-3 py-1 rounded text-sm ${
+                tab === t ? "panel font-medium ring-1 ring-blue-500/40" : "muted"
+              }`}
+            >
+              {t === "request" ? "Request" : "Response"}
+            </button>
+          ))}
         </div>
-      )}
+
+        {tab === "request" ? (
+          <>
+            <p className="muted text-xs mb-2">
+              No cell values, and no tools are declared, so the model cannot ask for a
+              second turn.
+              {exchange.round > 1 &&
+                " Earlier rounds' verdicts are included as counts and percentages only."}
+            </p>
+            <Block label="System" body={exchange.system} />
+            <Block label="User" body={exchange.userMessage} />
+          </>
+        ) : (
+          <>
+            <p className="muted text-xs mb-2">
+              Structured output, exactly as returned
+              {exchange.stopReason ? ` (stop_reason: ${exchange.stopReason})` : ""}.{" "}
+              {exchange.hypothesesReturned} hypothes
+              {exchange.hypothesesReturned === 1 ? "is" : "es"} returned.
+            </p>
+            <Block label="Response" body={exchange.responseJson} />
+          </>
+        )}
+      </Modal>
     </section>
   );
 }
@@ -123,7 +121,7 @@ function Block({ label, body }: { label: string; body: string }) {
   return (
     <div className="mt-2">
       <div className="muted text-xs font-mono mb-1">{label}</div>
-      <pre className="text-xs font-mono whitespace-pre-wrap break-words overflow-auto max-h-80 p-3 rounded border hairline">
+      <pre className="text-xs font-mono whitespace-pre-wrap break-words overflow-auto max-h-96 p-3 rounded border hairline">
         {body}
       </pre>
     </div>

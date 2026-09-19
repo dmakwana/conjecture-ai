@@ -32,9 +32,9 @@ export const DEMO_DATASETS: DemoDataset[] = [
     id: "commerce",
     name: "Commerce",
     blurb:
-      "An online marketplace in seven normalised tables, plus a denormalised orders_flat built from them.",
+      "An online marketplace in seven normalised tables: customers, sellers, products, orders, line items, payments and refunds.",
     lookFor:
-      "Referential integrity across orders, items, payments and refunds — and whether the flattened table still agrees with the tables it came from.",
+      "Referential integrity across orders, items, payments and refunds, and the arithmetic that should reconcile between them.",
     files: [
       { table: "customers", path: "/data/commerce/customers.parquet" },
       { table: "sellers", path: "/data/commerce/sellers.parquet" },
@@ -43,10 +43,9 @@ export const DEMO_DATASETS: DemoDataset[] = [
       { table: "order_items", path: "/data/commerce/order_items.parquet" },
       { table: "payments", path: "/data/commerce/payments.parquet" },
       { table: "refunds", path: "/data/commerce/refunds.parquet" },
-      { table: "orders_flat", path: "/data/commerce/orders_flat.parquet" },
     ],
-    approxRows: 258_000,
-    approxBytes: 8_300_000,
+    approxRows: 185_000,
+    approxBytes: 4_600_000,
   },
   {
     id: "flights",

@@ -6,6 +6,7 @@ import { isCrossTable, tablesInCheck } from "@/lib/hypotheses/schema";
 import type { ViolationPreview } from "@/lib/hypotheses/evaluate";
 import { ViolationTable } from "./ViolationTable";
 import { Spinner } from "./Spinner";
+import { IconCode, IconTable } from "./icons";
 
 export interface HypothesisRow {
   /** 1-based round that proposed this hypothesis. */
@@ -44,10 +45,10 @@ function Verdict({
     return running ? (
       <span className="text-blue-600 dark:text-blue-400 text-xs font-mono inline-flex items-center gap-1.5">
         <Spinner />
-        running
+        Running
       </span>
     ) : (
-      <span className="muted text-xs font-mono">queued</span>
+      <span className="muted text-xs font-mono">Queued</span>
     );
   }
   if (result.status === "holds") {
@@ -113,7 +114,7 @@ export function HypothesisList({
     <div className="space-y-3">
       {rounds.length > 1 && (
         <nav className="flex items-center gap-1 text-sm" role="tablist">
-          <span className="muted text-xs mr-1">rounds</span>
+          <span className="muted text-xs mr-1">Round</span>
           {rounds.map((round) => {
             const inRound = rows.filter((r) => r.round === round);
             const bad = inRound.filter((r) => r.result?.status === "falsified").length;
@@ -222,9 +223,10 @@ function RoundSection({
                       </span>
                       <button
                         onClick={() => onToggleRows(hypothesis)}
-                        className="underline underline-offset-2 hover:no-underline"
+                        className="inline-flex items-center gap-1 underline underline-offset-2 hover:no-underline"
                       >
-                        {openRows === hypothesis.id ? "hide rows" : "view rows"}
+                        <IconTable />
+                        {openRows === hypothesis.id ? "Hide rows" : "View rows"}
                       </button>
                     </>
                   )}
@@ -239,9 +241,10 @@ function RoundSection({
                   {result?.sql && (
                     <button
                       onClick={() => onToggleSql(hypothesis.id)}
-                      className="muted text-xs underline underline-offset-2 hover:no-underline"
+                      className="muted inline-flex items-center gap-1 text-xs underline underline-offset-2 hover:no-underline"
                     >
-                      {openSql === hypothesis.id ? "hide SQL" : "show SQL"}
+                      <IconCode />
+                      {openSql === hypothesis.id ? "Hide SQL" : "Show SQL"}
                     </button>
                   )}
                 </div>

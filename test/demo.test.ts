@@ -44,6 +44,17 @@ describe("demo manifest", () => {
     expect(DEMO_DATASETS[0].id).toBe("commerce");
   });
 
+  it("advertises a size that matches the files on disk", () => {
+    // The picker shows these numbers, so a dataset swap must not leave a stale
+    // claim behind.
+    for (const dataset of DEMO_DATASETS) {
+      const actual = dataset.files.reduce((n, f) => n + statSync(onDisk(f.path)).size, 0);
+      const drift = Math.abs(actual - dataset.approxBytes) / actual;
+      expect(drift, `${dataset.id}: claims ${dataset.approxBytes}, actual ${actual}`)
+        .toBeLessThan(0.1);
+    }
+  });
+
   it("describes every dataset", () => {
     for (const d of DEMO_DATASETS) {
       expect(d.name.length).toBeGreaterThan(0);

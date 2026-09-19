@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ColumnProfile, DatabaseProfile, TableProfile } from "@/lib/profile/types";
+import { Modal } from "./Modal";
+import { IconChevron, IconInspect, IconShield } from "./icons";
 
 function pct(v: number): string {
   if (v === 0) return "0%";
@@ -65,10 +67,11 @@ export function ProfilePanel({ profile }: { profile: DatabaseProfile }) {
           </span>
         </div>
         <button
-          onClick={() => setShowPayload((v) => !v)}
-          className="text-sm underline underline-offset-2 hover:no-underline"
+          onClick={() => setShowPayload(true)}
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm panel hover:ring-2 hover:ring-blue-500/30"
         >
-          {showPayload ? "hide what is sent" : "what gets sent"}
+          <IconInspect />
+          Inspect Prompt
         </button>
       </header>
 
@@ -79,16 +82,17 @@ export function ProfilePanel({ profile }: { profile: DatabaseProfile }) {
               onClick={() => setOpenTable(openTable === t.table ? null : t.table)}
               className="w-full flex items-baseline gap-3 px-4 py-2 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.03]"
             >
-              <span className="muted font-mono text-xs w-3">
-                {openTable === t.table ? "\u2212" : "+"}
-              </span>
+              <IconChevron open={openTable === t.table} className="muted" />
               <code className="font-mono text-xs font-medium">{t.table}</code>
               <span className="muted text-xs flex-1">
                 {t.rowCount.toLocaleString()} rows · {t.columnCount} columns · {t.format}
               </span>
               {t.columns.some((c) => c.nullPct > 50) && (
-                <span className="text-amber-600 dark:text-amber-400 text-xs">
-                  sparse columns
+                <span
+                  className="text-amber-600 dark:text-amber-400 text-xs"
+                  title="At least one column is more than half NULL"
+                >
+                  Sparse
                 </span>
               )}
             </button>
@@ -97,19 +101,25 @@ export function ProfilePanel({ profile }: { profile: DatabaseProfile }) {
         ))}
       </ul>
 
-      {showPayload && (
-        <div className="px-4 py-3 border-t hairline">
-          <p className="muted text-sm mb-2">
-            This is the entire request body. It is the only thing that leaves your browser —
-            table and column names, type names and numbers, plus masked format shapes where
-            every letter is <code className="font-mono">a</code>/<code className="font-mono">A</code>{" "}
-            and every digit is <code className="font-mono">9</code>. No cell values.
-          </p>
-          <pre className="text-xs font-mono overflow-auto max-h-96 p-3 rounded border hairline">
-            {JSON.stringify(profile, null, 2)}
-          </pre>
-        </div>
-      )}
+      <Modal
+        open={showPayload}
+        title="Inspect Prompt"
+        subtitle="The exact request body. This is everything that leaves your browser."
+        onClose={() => setShowPayload(false)}
+      >
+        <p className="muted text-sm mb-3 flex items-start gap-2">
+          <IconShield className="mt-0.5 text-emerald-600 dark:text-emerald-400" />
+          <span>
+            Table and column names, type names and numbers, plus masked format shapes
+            where every letter is <code className="font-mono">a</code>/
+            <code className="font-mono">A</code> and every digit is{" "}
+            <code className="font-mono">9</code>. No cell values.
+          </span>
+        </p>
+        <pre className="text-xs font-mono overflow-auto p-3 rounded border hairline">
+          {JSON.stringify(profile, null, 2)}
+        </pre>
+      </Modal>
     </section>
   );
 }
@@ -120,11 +130,11 @@ function ColumnTable({ table }: { table: TableProfile }) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b hairline muted text-xs">
-            <th className="text-left font-medium px-4 py-1.5">column</th>
-            <th className="text-left font-medium px-2 py-1.5">type</th>
-            <th className="text-right font-medium px-2 py-1.5">nulls</th>
-            <th className="text-right font-medium px-2 py-1.5">distinct</th>
-            <th className="text-left font-medium px-2 py-1.5">summary</th>
+            <th className="text-left font-medium px-4 py-1.5">Column</th>
+            <th className="text-left font-medium px-2 py-1.5">Type</th>
+            <th className="text-right font-medium px-2 py-1.5">Nulls</th>
+            <th className="text-right font-medium px-2 py-1.5">Distinct</th>
+            <th className="text-left font-medium px-2 py-1.5">Summary</th>
           </tr>
         </thead>
         <tbody>
@@ -132,7 +142,14 @@ function ColumnTable({ table }: { table: TableProfile }) {
             <tr key={c.name} className="border-b hairline last:border-0">
               <td className="px-4 py-1.5 font-mono text-xs">
                 {c.name}
-                {c.isCandidateKey && <span className="muted ml-1.5">key?</span>}
+                {c.isCandidateKey && (
+                  <span
+                    className="muted ml-1.5"
+                    title="Unique and never null — a possible key"
+                  >
+                    ★
+                  </span>
+                )}
               </td>
               <td className="px-2 py-1.5 muted font-mono text-xs">{c.sqlType}</td>
               <td className={`px-2 py-1.5 text-right font-mono text-xs ${c.nullPct > 0 ? "" : "muted"}`}>
