@@ -35,7 +35,9 @@ export function Modal({
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
-      className="panel rounded-lg p-0 w-[min(56rem,92vw)] max-h-[85vh] backdrop:bg-black/40 text-inherit"
+      // Geometry only. Centring comes from the `dialog { margin: auto }` rule in
+      // globals.css, which undoes Tailwind Preflight's `margin: 0` on `*`.
+      className="panel fixed inset-0 h-fit rounded-lg p-0 w-[min(56rem,92vw)] max-h-[85vh] backdrop:bg-black/40 text-inherit"
     >
       <div className="flex items-start justify-between gap-4 px-5 py-3.5 border-b hairline">
         <div className="min-w-0">

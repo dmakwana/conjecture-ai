@@ -35,3 +35,15 @@ body {
 }
 .muted { color: var(--muted); }
 .hairline { border-color: var(--border); }
+
+/*
+ * Restore centring for <dialog>.
+ *
+ * A modal dialog is centred by the browser through the UA rule `dialog { margin:
+ * auto }` acting on `inset: 0`. Tailwind's Preflight sets `margin: 0` on `*`,
+ * and an author rule beats a UA rule, so without this every modal pins itself to
+ * the top-left corner.
+ */
+dialog {
+  margin: auto;
+}
