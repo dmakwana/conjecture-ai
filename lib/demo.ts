@@ -67,7 +67,7 @@ export const DEMO_DATASETS: DemoDataset[] = [
     blurb:
       "Ninety thousand domestic flights with schedules, delays and a breakdown of what caused them.",
     attribution: {
-      text: "U.S. Department of Transportation, Bureau of Transportation Statistics, Reporting Carrier On-Time Performance, June 2024. A US federal work, not subject to copyright.",
+      text: "U.S. Department of Transportation, Bureau of Transportation Statistics, Reporting Carrier On-Time Performance, June 2024.",
       href: "https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ",
     },
     files: [{ table: "flights", path: "/data/flights/flights.parquet", format: "parquet" }],
@@ -78,7 +78,7 @@ export const DEMO_DATASETS: DemoDataset[] = [
     id: "cars",
     name: "Cars",
     blurb:
-      "Four hundred cars from the 1970s and 80s, with engine size, power, weight, fuel economy and origin. Small enough to read end to end.",
+      "Four hundred cars from the 1970s and 80s, with engine size, power, weight, fuel economy and origin.",
     attribution: {
       text: "vega-datasets (BSD-3-Clause), which carries the 1983 ASA Data Exposition cars dataset.",
       href: "https://github.com/vega/vega-datasets",
