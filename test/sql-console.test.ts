@@ -134,3 +134,24 @@ describe("the seeded query against a real DuckDB", () => {
     conn.close();
   }, 180_000);
 });
+
+describe("result paging", () => {
+  it("shows a page at a time rather than the whole result", async () => {
+    // The old code called table.toArray(), converting every row to JS just to
+    // display the first screenful, and the modal grew with the result.
+    const source = await import("node:fs").then((fs) =>
+      fs.readFileSync("components/SqlConsole.tsx", "utf8"),
+    );
+    expect(source).toMatch(/const PAGE_SIZE = \d+/);
+    expect(source).not.toMatch(/\.toArray\(\)/);
+    // Rows come off the Arrow table by index, so only the page is materialised.
+    expect(source).toMatch(/outcome\.table\.get\(i\)/);
+  });
+
+  it("holds the dialog at a fixed size", async () => {
+    const source = await import("node:fs").then((fs) =>
+      fs.readFileSync("components/SqlConsole.tsx", "utf8"),
+    );
+    expect(source).toMatch(/<Modal\s*\n?\s*fill/);
+  });
+});

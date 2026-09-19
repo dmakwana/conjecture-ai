@@ -35,11 +35,21 @@ describe("modal centring", () => {
     expect(modal).toMatch(/\{open && children\}/);
   });
 
-  it("keeps the height auto so margin:auto can centre vertically", () => {
+  it("keeps a definite height on both modes so margin:auto can centre", () => {
     // margin:auto only centres on an axis whose size is definite. A stretched
     // height (from inset:0 with height:auto) would fill the viewport instead.
-    const className = modal.match(/className="([^"]*)"/)?.[1] ?? "";
-    expect(className).toMatch(/\bh-fit\b/);
-    expect(className).not.toMatch(/\bh-full\b/);
+    expect(modal).toMatch(/h-\[85vh\]/);  // fixed-size mode
+    expect(modal).toMatch(/h-fit/);        // grow-to-content mode
+    expect(modal).not.toMatch(/\bh-full\b/);
+  });
+
+  it("locks the page behind it, and puts back the scrollbar's width", () => {
+    // showModal() makes the document inert, which stops clicks and focus but
+    // not the wheel, so the page behind still scrolls under the dialog.
+    expect(modal).toMatch(/overflow\s*=\s*"hidden"/);
+    // Removing the scrollbar frees its width and the page jumps sideways.
+    expect(modal).toMatch(/paddingRight/);
+    // Counted, so one modal closing cannot unlock while another is open.
+    expect(modal).toMatch(/lockCount/);
   });
 });

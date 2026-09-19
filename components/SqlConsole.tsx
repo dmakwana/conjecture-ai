@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as duckdb from "@duckdb/duckdb-wasm";
+import type * as arrow from "apache-arrow";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { sql, PostgreSQL } from "@codemirror/lang-sql";
 import type { LoadedDatabase } from "@/lib/duckdb/load";
@@ -11,8 +12,14 @@ import { Modal } from "./Modal";
 import { ResultTable, type ResultRows } from "./ResultTable";
 import { Spinner } from "./Spinner";
 
-/** Rows held in the DOM. The query itself is unbounded; only the display is. */
-const MAX_DISPLAY_ROWS = 500;
+/**
+ * Rows on screen at once.
+ *
+ * The full result stays in Arrow, where DuckDB already put it, and only the
+ * visible page is converted to JS objects. Converting all of it to show the
+ * first screenful is the expensive half of a large SELECT.
+ */
+const PAGE_SIZE = 50;
 
 export interface RanQuery {
   title: string;
@@ -20,10 +27,10 @@ export interface RanQuery {
 }
 
 interface Outcome {
-  rows: ResultRows;
+  table: arrow.Table;
+  columns: string[];
   rowCount: number;
   ms: number;
-  truncated: boolean;
 }
 
 /**
@@ -71,6 +78,7 @@ export function SqlConsole({
 }) {
   const [text, setText] = useState(() => buildInitialSql(loaded, ranQueries));
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // Read once at mount rather than assigning inside an effect, which would
@@ -120,23 +128,18 @@ export function SqlConsole({
 
     setRunning(true);
     setError(null);
+    setPage(0);
     const started = performance.now();
     // A fresh connection per run: rebuildDatabase re-opens the database when
     // sources change, which invalidates anything held across that.
     const conn = await db.connect();
     try {
       const table = await conn.query(statement);
-      const cols = columnNames(table);
-      const all = table.toArray();
-      const rows = all.slice(0, MAX_DISPLAY_ROWS).map((row) => {
-        const obj = toJs(row) as Record<string, unknown>;
-        return cols.map((c) => obj[c] ?? null);
-      });
       setOutcome({
-        rows: { columns: cols, rows },
+        table,
+        columns: columnNames(table),
         rowCount: table.numRows,
         ms: Math.round(performance.now() - started),
-        truncated: table.numRows > MAX_DISPLAY_ROWS,
       });
     } catch (err) {
       // The user's own console over their own data, so the engine's full
@@ -149,15 +152,33 @@ export function SqlConsole({
     }
   }, [getDb, running, text]);
 
+  // Only this page is turned into JS objects; the rest stays in Arrow.
+  const visible: ResultRows | null = useMemo(() => {
+    if (!outcome) return null;
+    const start = page * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, outcome.rowCount);
+    const rows: unknown[][] = [];
+    for (let i = start; i < end; i++) {
+      const obj = toJs(outcome.table.get(i)) as Record<string, unknown>;
+      rows.push(outcome.columns.map((c) => obj[c] ?? null));
+    }
+    return { columns: outcome.columns, rows };
+  }, [outcome, page]);
+
+  const lastPage = outcome ? Math.max(0, Math.ceil(outcome.rowCount / PAGE_SIZE) - 1) : 0;
+  const from = outcome ? page * PAGE_SIZE + 1 : 0;
+  const to = outcome ? Math.min((page + 1) * PAGE_SIZE, outcome.rowCount) : 0;
+
   return (
     <Modal
+      fill
       open={open}
       title="SQL Console"
       subtitle="DuckDB running in this tab, over the tables you loaded."
       onClose={onClose}
     >
       <div
-        className="rounded border hairline overflow-hidden"
+        className="rounded border hairline overflow-hidden shrink-0"
         // Capture phase, so it fires before CodeMirror's own Enter handling.
         onKeyDownCapture={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -179,7 +200,7 @@ export function SqlConsole({
         />
       </div>
 
-      <div className="flex items-center gap-3 mt-3 flex-wrap">
+      <div className="flex items-center gap-3 mt-3 flex-wrap shrink-0">
         <button
           onClick={run}
           disabled={running}
@@ -193,23 +214,53 @@ export function SqlConsole({
           <span className="muted text-sm">
             {outcome.rowCount.toLocaleString()} row
             {outcome.rowCount === 1 ? "" : "s"} · {outcome.ms} ms
-            {outcome.truncated && ` · showing the first ${MAX_DISPLAY_ROWS}`}
           </span>
         )}
       </div>
 
       {error && (
-        <pre className="mt-3 text-xs font-mono whitespace-pre-wrap text-red-600 dark:text-red-400 p-3 rounded border hairline">
+        <pre className="mt-3 text-xs font-mono whitespace-pre-wrap text-red-600 dark:text-red-400 p-3 rounded border hairline shrink-0">
           {error}
         </pre>
       )}
 
-      {outcome && outcome.rows.rows.length > 0 && (
-        <div className="mt-3">
-          <ResultTable preview={outcome.rows} />
+      {/* The results area takes whatever height is left and scrolls inside it,
+          so the dialog itself never changes size between a 3-row and a
+          300,000-row result. */}
+      {visible && visible.rows.length > 0 && (
+        <div className="mt-3 flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-auto">
+            <ResultTable preview={visible} />
+          </div>
+
+          {outcome && outcome.rowCount > PAGE_SIZE && (
+            <div className="flex items-center justify-between gap-3 pt-2 shrink-0">
+              <span className="muted text-xs font-mono tabular-nums">
+                {from.toLocaleString()}-{to.toLocaleString()} of{" "}
+                {outcome.rowCount.toLocaleString()}
+              </span>
+              <span className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((n) => Math.max(0, n - 1))}
+                  disabled={page === 0}
+                  className="panel rounded-md px-3 py-1 text-sm disabled:opacity-40 hover:ring-2 hover:ring-blue-500/30"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage((n) => Math.min(lastPage, n + 1))}
+                  disabled={page >= lastPage}
+                  className="panel rounded-md px-3 py-1 text-sm disabled:opacity-40 hover:ring-2 hover:ring-blue-500/30"
+                >
+                  Next
+                </button>
+              </span>
+            </div>
+          )}
         </div>
       )}
-      {outcome && outcome.rows.rows.length === 0 && !error && (
+
+      {visible && visible.rows.length === 0 && !error && (
         <p className="muted text-sm mt-3">The query returned no rows.</p>
       )}
     </Modal>

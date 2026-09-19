@@ -500,6 +500,18 @@ export default function Page() {
         <>
           <ProfilePanel profile={profile} />
 
+          {!busy && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setSqlOpen(true)}
+                className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
+              >
+                <IconCode />
+                SQL Console
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center gap-4 flex-wrap">
             <button
               onClick={runRound}
@@ -531,30 +543,20 @@ export default function Page() {
               </span>
             )}
 
-            {!busy && (
-              <button
-                onClick={() => setSqlOpen(true)}
-                className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
-              >
-                <IconCode />
-                SQL Console
-              </button>
+            {priorRounds.length >= MAX_ROUNDS && (
+              <span className="muted text-xs">
+                {MAX_ROUNDS} rounds is the limit
+              </span>
             )}
 
             {rows.length > 0 && !busy && (
               <button
                 onClick={downloadReport}
-                className="panel inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
+                className="panel ml-auto inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
               >
                 <IconDownload />
                 Export Report
               </button>
-            )}
-
-            {priorRounds.length >= MAX_ROUNDS && (
-              <span className="muted text-xs">
-                {MAX_ROUNDS} rounds is the limit
-              </span>
             )}
 
             {loaded && loaded.tables.length > 0 && !loaded.externalAccessDisabled && (
