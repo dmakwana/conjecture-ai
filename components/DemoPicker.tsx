@@ -63,6 +63,17 @@ export function DemoPicker({
 
       <div className="panel rounded-md px-4 py-3">
         <p className="text-sm">{dataset.blurb}</p>
+        <p className="muted text-xs mt-1.5">
+          {dataset.attribution.text}{" "}
+          <a
+            href={dataset.attribution.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline underline-offset-2 hover:no-underline"
+          >
+            Source
+          </a>
+        </p>
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <button
             onClick={() => onLoad(dataset.id)}

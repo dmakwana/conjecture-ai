@@ -69,6 +69,20 @@ describe("demo manifest", () => {
     }
   });
 
+  it("credits every dataset", () => {
+    for (const d of DEMO_DATASETS) {
+      expect(d.attribution.text.length, d.id).toBeGreaterThan(10);
+      expect(d.attribution.href, d.id).toMatch(/^https:\/\//);
+    }
+  });
+
+  it("says plainly which data is real and which is generated", () => {
+    // Being vague about this is the one thing attribution must not do.
+    expect(demoById("commerce").attribution.text).toMatch(/synthetic/i);
+    expect(demoById("flights").attribution.text).toMatch(/Bureau of Transportation Statistics/);
+    expect(demoById("cars").attribution.text).toMatch(/vega-datasets/);
+  });
+
   it("describes every dataset", () => {
     for (const d of DEMO_DATASETS) {
       expect(d.name.length).toBeGreaterThan(0);

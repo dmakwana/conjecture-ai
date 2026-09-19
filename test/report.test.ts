@@ -107,6 +107,22 @@ describe("markdown report", () => {
     expect(report.toLowerCase()).not.toContain("anthropic");
   });
 
+  it("carries attribution when the data is one of ours", () => {
+    // A report is the artifact most likely to be forwarded, so credit has to
+    // travel with it rather than living only in the picker.
+    const credited = buildMarkdownReport({
+      profile, loaded, rows, generatedAt: new Date(),
+      attribution: { text: "U.S. DOT, Bureau of Transportation Statistics.", href: "https://example.gov/x" },
+    });
+    expect(credited).toContain("Source: U.S. DOT, Bureau of Transportation Statistics.");
+    expect(credited).toContain("<https://example.gov/x>");
+  });
+
+  it("omits attribution for data the user supplied", () => {
+    // Their file, their call; guessing at a source would be worse than silence.
+    expect(report).not.toContain("Source:");
+  });
+
   it("states what actually left the browser", () => {
     expect(report).toContain("## What left the browser");
     expect(report).toMatch(/No cell values, no rows, and no generated SQL were transmitted/);

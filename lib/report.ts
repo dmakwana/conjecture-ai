@@ -15,6 +15,9 @@ export interface ReportInput {
   loaded: LoadedDatabase;
   rows: ReportRow[];
   generatedAt?: Date;
+  /** Credit for a bundled dataset. A report is the thing most likely to be
+   *  passed around, so the attribution has to travel with it. */
+  attribution?: { text: string; href: string } | null;
 }
 
 const VERDICT: Record<string, string> = {
@@ -52,7 +55,7 @@ export function reportFilename(d: Date = new Date()): string {
  * those are the one thing that was never meant to travel.
  */
 export function buildMarkdownReport(input: ReportInput): string {
-  const { profile, loaded, rows } = input;
+  const { profile, loaded, rows, attribution } = input;
   const generatedAt = input.generatedAt ?? new Date();
 
   const done = rows.filter((r) => r.result !== null);
@@ -85,6 +88,11 @@ export function buildMarkdownReport(input: ReportInput): string {
     );
   }
   out.push("");
+
+  if (attribution) {
+    out.push(`Source: ${attribution.text} <${attribution.href}>`);
+    out.push("");
+  }
 
   /* ------------------------------------------------------------- summary */
   out.push(`## Summary`);

@@ -394,7 +394,14 @@ export default function Page() {
    */
   const downloadReport = useCallback(() => {
     if (!profile || !loaded) return;
-    const markdown = buildMarkdownReport({ profile, loaded, rows });
+    const markdown = buildMarkdownReport({
+      profile,
+      loaded,
+      rows,
+      // Only when the data is one of ours; a file the user supplied is theirs
+      // to credit, not ours to guess at.
+      attribution: mode === "demo" && loadedDemo ? demoById(loadedDemo).attribution : null,
+    });
     const url = URL.createObjectURL(
       new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
     );
@@ -406,7 +413,7 @@ export default function Page() {
     a.remove();
     // Revoke on the next tick; revoking synchronously can cancel the download.
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [profile, loaded, rows]);
+  }, [profile, loaded, rows, mode, loadedDemo]);
 
   const inspect = useCallback(
     async (h: Hypothesis) => {

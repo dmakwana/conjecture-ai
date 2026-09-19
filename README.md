@@ -41,6 +41,16 @@ known-good, so they skip the CORS and format checks that user-supplied URLs go t
 Commerce is the default because it is the multi-table one, and cross-table relationships are
 exactly what a single-table profile cannot reveal.
 
+Each is credited in the picker and in any exported report, and the credit says plainly which data
+is real and which is generated:
+
+- **Commerce** is synthetic, generated for this demo, with no real records. Its schema is inspired
+  by the Olist Brazilian e-commerce dataset.
+- **Flights** is real: U.S. Department of Transportation, Bureau of Transportation Statistics,
+  Reporting Carrier On-Time Performance, June 2024. A US federal work, not subject to copyright.
+- **Cars** comes from [vega-datasets](https://github.com/vega/vega-datasets) (BSD-3-Clause), which
+  carries the 1983 ASA Data Exposition cars dataset.
+
 The datasets are seeded with real defects, so the demo does not just report that everything is
 fine. A live run over Commerce found 100 orders referencing a customer that does not exist, 306
 duplicate `(order_id, line_number)` pairs, 143 rows where `order_total` does not equal
@@ -307,7 +317,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-145 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+149 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 

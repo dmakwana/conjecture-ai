@@ -21,11 +21,19 @@ export interface DemoFile {
   format: SourceFormat;
 }
 
+export interface Attribution {
+  /** Credit line, phrased as the source asks for it where one does. */
+  text: string;
+  /** Where the original lives. */
+  href: string;
+}
+
 export interface DemoDataset {
   id: DemoId;
   name: string;
   /** What the data is. */
   blurb: string;
+  attribution: Attribution;
   files: DemoFile[];
   approxRows: number;
   approxBytes: number;
@@ -37,6 +45,10 @@ export const DEMO_DATASETS: DemoDataset[] = [
     name: "Commerce",
     blurb:
       "An online marketplace in seven normalised tables: customers, sellers, products, orders, line items, payments and refunds.",
+    attribution: {
+      text: "Synthetic. Generated for this demo; no real records. Schema inspired by the Olist Brazilian e-commerce dataset.",
+      href: "https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce",
+    },
     files: [
       { table: "customers", path: "/data/commerce/customers.parquet", format: "parquet" },
       { table: "sellers", path: "/data/commerce/sellers.parquet", format: "parquet" },
@@ -54,6 +66,10 @@ export const DEMO_DATASETS: DemoDataset[] = [
     name: "Flights",
     blurb:
       "Ninety thousand domestic flights with schedules, delays and a breakdown of what caused them.",
+    attribution: {
+      text: "U.S. Department of Transportation, Bureau of Transportation Statistics, Reporting Carrier On-Time Performance, June 2024. A US federal work, not subject to copyright.",
+      href: "https://www.transtats.bts.gov/Fields.asp?gnoyr_VQ=FGJ",
+    },
     files: [{ table: "flights", path: "/data/flights/flights.parquet", format: "parquet" }],
     approxRows: 91_000,
     approxBytes: 2_100_000,
@@ -62,7 +78,11 @@ export const DEMO_DATASETS: DemoDataset[] = [
     id: "cars",
     name: "Cars",
     blurb:
-      "Four hundred cars from the 1970s and 80s, with engine size, power, weight, fuel economy and origin.",
+      "Four hundred cars from the 1970s and 80s, with engine size, power, weight, fuel economy and origin. Small enough to read end to end.",
+    attribution: {
+      text: "vega-datasets (BSD-3-Clause), which carries the 1983 ASA Data Exposition cars dataset.",
+      href: "https://github.com/vega/vega-datasets",
+    },
     files: [{ table: "cars", path: "/data/cars/cars.json", format: "json" }],
     approxRows: 406,
     approxBytes: 100_492,
