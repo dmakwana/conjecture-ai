@@ -49,7 +49,7 @@ export function columnNames(table: arrow.Table): string[] {
  *
  * DuckDB returns HUGEINT for sum() over BIGINT and for DECIMAL columns, and
  * Arrow surfaces both this way. Read naively it looks like the array [2,0,0,0]
- * and coerces to 0 — a silent wrong answer rather than an error, which is why
+ * and coerces to 0, a silent wrong answer rather than an error, which is why
  * it is handled explicitly here as well as cast away in SQL.
  */
 function decimal128ToNumber(words: number[]): number | null {

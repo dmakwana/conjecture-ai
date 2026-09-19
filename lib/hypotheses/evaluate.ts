@@ -96,7 +96,7 @@ function assertComparable(
     const right = typeOf(schema, refTable, refColumns[i]);
     if (typeFamily(left) !== typeFamily(right)) {
       throw new Error(
-        `Cannot compare ${table}.${column} (${left}) with ${refTable}.${refColumns[i]} (${right}) — types differ.`,
+        `Cannot compare ${table}.${column} (${left}) with ${refTable}.${refColumns[i]} (${right}): types differ.`,
       );
     }
   }
@@ -254,7 +254,7 @@ export async function fetchViolationRows(
  * How many DuckDB connections evaluate checks at once.
  *
  * Honest caveat: the `eh` WebAssembly build is single-threaded, so this is not
- * true CPU parallelism — DuckDB still executes one query at a time. What it does
+ * true CPU parallelism. DuckDB still executes one query at a time. What it does
  * buy is that queries are queued inside the worker instead of each waiting for a
  * JS round trip, and results surface the moment each finishes rather than after
  * the whole batch. If the threaded build is ever enabled this becomes real

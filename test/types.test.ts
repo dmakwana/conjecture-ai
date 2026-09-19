@@ -92,7 +92,7 @@ describe("cross-type references", () => {
       { table: "orders", columns: [{ name: "order_id" }] },
     ]);
     const note = sanitizeNote(
-      "Cannot compare lines.order_id (VARCHAR) with orders.order_id (BIGINT) — types differ.",
+      "Cannot compare lines.order_id (VARCHAR) with orders.order_id (BIGINT): types differ.",
       known,
     );
     expect(note).toMatch(/types differ/);

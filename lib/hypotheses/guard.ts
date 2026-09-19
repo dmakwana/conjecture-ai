@@ -45,7 +45,7 @@ export type GuardResult =
 /**
  * Replace string literals and quoted identifiers with inert placeholders so the
  * keyword scan cannot be fooled by, or trip over, their contents. A banned word
- * inside a literal is harmless — DuckDB never evaluates a string as SQL — and a
+ * inside a literal is harmless, since DuckDB never evaluates a string as SQL, and a
  * column legitimately named "from" must not fail the check.
  */
 function stripQuoted(sql: string): string {
@@ -111,7 +111,7 @@ export function quoteIdent(name: string): string {
 
 /**
  * Column names for a `unique` check are matched against the real schema rather
- * than guarded heuristically — an exact match against known columns is a
+ * than guarded heuristically. An exact match against known columns is a
  * stronger check than any denylist.
  */
 export type ColumnGuardResult =

@@ -11,8 +11,8 @@ import type { Check, Hypothesis, HypothesisResult } from "./schema";
  * exposure.
  *
  * The one genuine hazard is error text. DuckDB embeds the offending value in
- * its messages — "Could not convert string 'aaron.blake@acme.io' to DOUBLE" —
- * so a raw reason would hand over a cell value. sanitizeNote() exists for that
+ * its messages, for example "Could not convert string 'aaron.blake@acme.io' to
+ * DOUBLE", so a raw reason would hand over a cell value. sanitizeNote() exists for that
  * and is the reason this module is not three lines long.
  */
 
@@ -95,8 +95,8 @@ export function sanitizeNote(reason: string, knownIdentifiers: Set<string>): str
     category = "could not be evaluated";
   }
 
-  // Echo only identifiers already exposed in the profile. Everything else —
-  // including every quoted literal — is discarded.
+  // Echo only identifiers already exposed in the profile. Everything else,
+  // including every quoted literal, is discarded.
   const mentioned = [
     ...new Set(
       (reason.match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []).filter((t) =>

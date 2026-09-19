@@ -172,8 +172,8 @@ export function normalizeHypotheses(wire: WireHypotheses): Hypothesis[] {
  * A verbatim record of the single exchange with the model, returned to the
  * client so the user can read exactly what was asked and what came back.
  *
- * `system` and `userMessage` are the actual strings sent, not a reconstruction —
- * the whole point of showing them is that they are the real thing.
+ * `system` and `userMessage` are the actual strings sent, not a reconstruction.
+ * The whole point of showing them is that they are the real thing.
  */
 export interface Exchange {
   model: string;

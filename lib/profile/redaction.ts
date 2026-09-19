@@ -16,7 +16,7 @@ import { TableProfileSchema, type TableProfile } from "./types";
  * Punctuation inside a shape stays literal, because that is what makes a shape
  * useful for spotting format drift. A value made entirely of punctuation would
  * therefore survive masking, so shapes are also length-capped. Anything
- * containing a letter or digit — emails, names, identifiers — cannot survive.
+ * containing a letter or digit, such as emails, names and identifiers, cannot survive.
  */
 const MAX_SHAPE_LENGTH = 60;
 

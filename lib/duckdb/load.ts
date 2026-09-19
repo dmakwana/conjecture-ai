@@ -107,8 +107,8 @@ async function lockDown(conn: duckdb.AsyncDuckDBConnection): Promise<boolean> {
  * is global to the database and cannot be undone, so a database that has loaded
  * one dataset can never read another file; re-opening is the only way back, and
  * re-opening drops every table. Rebuilding from retained bytes keeps one code
- * path and leaves the database in the same state — every source present, access
- * locked down — no matter what order sources were added or removed in.
+ * path and leaves the database in the same state, every source present and
+ * access locked down, no matter what order sources were added or removed in.
  *
  * The cost is that each source's bytes are retained in memory for as long as it
  * is loaded. Callers must close any connection before calling, and reconnect
@@ -140,7 +140,7 @@ export async function rebuildDatabase(
       // AsyncDuckDB posts the buffer to its worker with the ArrayBuffer in the
       // transfer list, which detaches it on this side. Handing it `source.bytes`
       // directly would leave that source permanently unusable, so the next
-      // rebuild — triggered by adding or removing any source — would fail with
+      // rebuild, triggered by adding or removing any source, would fail with
       // "An ArrayBuffer is detached and could not be cloned". Rebuilding from
       // retained bytes is the whole design, so the copy is not optional.
       //

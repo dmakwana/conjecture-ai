@@ -74,17 +74,17 @@ describe("markdown report", () => {
   });
 
   it("carries each verdict with its counts, share and duration", () => {
-    expect(report).toContain("✗ FALSIFIED — Every orders.customer_id exists in customers");
+    expect(report).toContain("✗ FALSIFIED: Every orders.customer_id exists in customers");
     expect(report).toContain("**100 of 40,079 rows (0.25%)** · 68 ms");
-    expect(report).toContain("✓ HOLDS — total is never negative");
+    expect(report).toContain("✓ HOLDS: total is never negative");
     expect(report).toContain("No violations in 40,079 rows · 8 ms");
-    expect(report).toContain("— NOT RUN — customer_id always matches");
+    expect(report).toContain("○ NOT RUN: customer_id always matches");
     expect(report).toContain("Could not be evaluated: type mismatch (customer_id)");
   });
 
   it("keeps rounds separate and labelled", () => {
-    expect(report).toContain("## Round 1 — from the profile");
-    expect(report).toContain("## Round 2 — informed by earlier results");
+    expect(report).toContain("## Round 1: from the profile");
+    expect(report).toContain("## Round 2: informed by earlier results");
     expect(report.indexOf("## Round 1")).toBeLessThan(report.indexOf("## Round 2"));
   });
 

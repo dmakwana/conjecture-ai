@@ -20,7 +20,7 @@ export interface ReportInput {
 const VERDICT: Record<string, string> = {
   holds: "✓ HOLDS",
   falsified: "✗ FALSIFIED",
-  skipped: "— NOT RUN",
+  skipped: "○ NOT RUN",
 };
 
 function checkText(h: Hypothesis): string {
@@ -48,7 +48,7 @@ export function reportFilename(d: Date = new Date()): string {
  *
  * Deliberately self-contained: a downloaded file outlives the tab, which is the
  * only durable record of a run, since nothing here is persisted anywhere else.
- * It carries the local results in full — violating-row previews excluded, since
+ * It carries the local results in full, with violating-row previews excluded, since
  * those are the one thing that was never meant to travel.
  */
 export function buildMarkdownReport(input: ReportInput): string {
@@ -70,7 +70,7 @@ export function buildMarkdownReport(input: ReportInput): string {
   out.push(`# duck-invariant report`);
   out.push("");
   out.push(
-    `Generated ${stamp(generatedAt)} — every check ran locally in the browser.`,
+    `Generated ${stamp(generatedAt)}. Every check ran locally in the browser.`,
   );
   out.push("");
 
@@ -117,13 +117,13 @@ export function buildMarkdownReport(input: ReportInput): string {
   for (const round of roundNumbers) {
     const inRound = rows.filter((r) => r.round === round);
     out.push(
-      `## Round ${round} — ${round === 1 ? "from the profile" : "informed by earlier results"}`,
+      `## Round ${round}: ${round === 1 ? "from the profile" : "informed by earlier results"}`,
     );
     out.push("");
 
     for (const { hypothesis, result } of inRound) {
       const verdict = result === null ? "· not tested" : VERDICT[result.status];
-      out.push(`### ${verdict} — ${hypothesis.title}`);
+      out.push(`### ${verdict}: ${hypothesis.title}`);
       out.push("");
 
       const tags = [

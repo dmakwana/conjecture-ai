@@ -12,7 +12,7 @@ function pct(v: number): string {
 }
 
 function num(v: number | null): string {
-  if (v === null) return "—";
+  if (v === null) return "-";
   if (Number.isInteger(v)) return v.toLocaleString();
   return v.toFixed(Math.abs(v) < 1 ? 4 : 2);
 }
@@ -27,7 +27,7 @@ function summary(c: ColumnProfile): string {
     return parts.join(" · ");
   }
   if (c.temporal) {
-    const parts = [`${c.temporal.minISO ?? "—"} … ${c.temporal.maxISO ?? "—"}`];
+    const parts = [`${c.temporal.minISO ?? "-"} … ${c.temporal.maxISO ?? "-"}`];
     if (c.temporal.futureCount > 0) parts.push(`${c.temporal.futureCount.toLocaleString()} future`);
     if (c.temporal.epochZeroCount > 0) parts.push(`${c.temporal.epochZeroCount.toLocaleString()} at epoch`);
     return parts.join(" · ");
@@ -36,7 +36,7 @@ function summary(c: ColumnProfile): string {
     return `${c.boolean.trueCount.toLocaleString()} true · ${c.boolean.falseCount.toLocaleString()} false`;
   }
   if (c.string) {
-    const parts = [`len ${num(c.string.lenMin)}–${num(c.string.lenMax)}`];
+    const parts = [`len ${num(c.string.lenMin)}-${num(c.string.lenMax)}`];
     if (c.string.emptyCount > 0) parts.push(`${c.string.emptyCount.toLocaleString()} empty`);
     if (c.string.untrimmedCount > 0) parts.push(`${c.string.untrimmedCount.toLocaleString()} untrimmed`);
     if (c.string.shapes.length > 0) {
@@ -145,7 +145,7 @@ function ColumnTable({ table }: { table: TableProfile }) {
                 {c.isCandidateKey && (
                   <span
                     className="muted ml-1.5"
-                    title="Unique and never null — a possible key"
+                    title="Unique and never null, so a possible key"
                   >
                     ★
                   </span>

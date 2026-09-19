@@ -22,7 +22,7 @@ const DEMO = [
 
 /**
  * Adding data is a choice between a URL and a file, so neither input is shown
- * until one is picked — an always-visible URL box implies the URL is the only
+ * until one is picked. An always-visible URL box implies the URL is the only
  * way in.
  */
 export function SourceManager({
@@ -172,7 +172,7 @@ export function SourceManager({
               </button>
             </span>
           ))}{" "}
-          — load both to see cross-table checks.
+          (load both to see cross-table checks).
         </p>
       )}
 

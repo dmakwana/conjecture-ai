@@ -5,8 +5,8 @@ import { IconClose } from "./icons";
 
 /**
  * A dialog built on the native <dialog> element, which brings focus trapping,
- * Escape-to-close, inertness of the page behind it and the top layer for free —
- * all of which a div would have to reimplement badly.
+ * Escape-to-close, inertness of the page behind it and the top layer for free.
+ * A div would have to reimplement all of it, badly.
  */
 export function Modal({
   open, title, subtitle, onClose, children,

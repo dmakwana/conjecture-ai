@@ -1,12 +1,12 @@
 # duck-invariant
 
-Point it at one or more datasets, and it proposes **falsifiable hypotheses** about them — then
+Point it at one or more datasets, and it proposes **falsifiable hypotheses** about them, then
 tests each one locally and tells you which ones are false. Feed the verdicts back and it narrows
 down *why*.
 
 Everything runs in the browser. DuckDB-WASM loads the files, profiles every column, and evaluates
-every check. The only thing that ever leaves the page is a statistical profile — counts,
-percentages, ranges, and masked format shapes — and, on later rounds, the pass/fail counts of what
+every check. The only thing that ever leaves the page is a statistical profile (counts,
+percentages, ranges, and masked format shapes) plus, on later rounds, the pass/fail counts of what
 has already been tested. **No cell values are ever transmitted.**
 
 ```
@@ -23,7 +23,7 @@ cp .dev.vars.example .dev.vars     # add your Anthropic API key
 npm run dev                        # next on :3000, worker on :8787
 ```
 
-Open http://localhost:3000. It lands in **demo mode** with the Commerce dataset pre-selected —
+Open http://localhost:3000. It lands in **demo mode** with the Commerce dataset pre-selected, so
 one click loads it. Switch to **Your own data** to point at a CORS-enabled Parquet/CSV/JSON URL or
 drop your own files.
 
@@ -50,7 +50,7 @@ Loading takes one click rather than happening automatically: the engine plus Com
 megabytes, and downloading that unasked would be rude on a metered connection.
 
 `test/demo.test.ts` asserts every manifest path exists on disk, stays under Cloudflare's 25 MiB
-per-file asset limit, and uses safe unique table names — a typo there would otherwise 404 at
+per-file asset limit, and uses safe unique table names. A typo there would otherwise 404 at
 runtime with no other warning.
 
 ## Iterative rounds
@@ -70,15 +70,15 @@ It works. A live two-round run over Commerce:
 
 | Round 1 found | Round 2 concluded |
 |---|---|
-| 100 orders reference a customer that does not exist | Those 100 are exactly the malformed short `customer_id`s — every value matches the shape `A{3}-9{7}` |
+| 100 orders reference a customer that does not exist | Those 100 are exactly the malformed short `customer_id`s: every value matches the shape `A{3}-9{7}` |
 | A composite `(product_id, seller_id, product_category)` check fails on 40 rows | `product_category` is the culprit: it mismatches on those 40 while `seller_id` **holds** |
 | 40 rows break lifecycle timestamp ordering | `created_at` is not the earliest timestamp (40); `delivered_at >= shipped_at` **holds** |
 
-Note the second round used the masked shape histogram — the privacy-preserving representation —
-to identify a root cause it could never have seen the values for.
+Note the second round used the masked shape histogram, the privacy-preserving representation, to
+identify a root cause it could never have seen the values for.
 
 **What travels back is only what already travels out.** Each finding carries its title, the
-structured check, the outcome, and a violation count and percentage — aggregates of exactly the
+structured check, the outcome, and a violation count and percentage: aggregates of exactly the
 kind the profile already reports. No rows, no values, and not even the generated SQL.
 
 The one real hazard is error text: DuckDB embeds the offending value in its messages
@@ -103,12 +103,12 @@ channel. What crosses the network:
 
 Enforced in three places:
 
-1. `lib/profile/redaction.ts` — `assertNoValues()` re-parses the profile through its zod schema
+1. `lib/profile/redaction.ts` calls `assertNoValues()`, which re-parses the profile through its zod schema
    (dropping unknown keys) and rejects any shape containing an unmasked letter or digit. A profile
    cannot reach the network without passing it.
-2. `worker/index.ts` — re-parses the incoming profile server-side, so a modified client cannot
+2. `worker/index.ts` re-parses the incoming profile server-side, so a modified client cannot
    smuggle extra fields through to Anthropic.
-3. `test/profile.test.ts` and `test/integration.test.ts` — profile fixtures seeded with realistic
+3. `test/profile.test.ts` and `test/integration.test.ts` profile fixtures seeded with realistic
    PII and real TPC-H data, then assert none of those literals appear in the serialised profile.
 
 The UI's **"what gets sent"** toggle shows the exact request body, so you never have to take the
@@ -130,7 +130,7 @@ independent layers stop it:
     | { kind: 'row_predicate'; table: string; expression: string }
     // no duplicates on this column combination
     | { kind: 'unique'; table: string; columns: string[] }
-    // every non-NULL value here also appears there — the cross-table one
+    // every non-NULL value here also appears there: the cross-table one
     | { kind: 'references'; table: string; columns: string[];
         referencesTable: string; referencesColumns: string[] }
   ```
@@ -144,7 +144,7 @@ independent layers stop it:
   `references` is deliberately direction-agnostic. Pointing `lineitem → orders` asks whether every
   line belongs to a real order; reversing it asks whether every order has at least one line. Both
   are worth testing, and the prompt says so. It is compiled to a `NOT EXISTS` anti-join that skips
-  NULL keys, exactly as a foreign key would — **but only when both sides are the same type
+  NULL keys, exactly as a foreign key would, **but only when both sides are the same type
   family**. DuckDB coerces across families silently rather than complaining, so a BIGINT key joined
   to a zero-padded VARCHAR key matches `'0001'` to `1` and under-reports violations (measured: 1
   reported where the truth was 3). The check is refused, naming both types, rather than returning a
@@ -171,12 +171,12 @@ lib/sources/validate.ts URL preflight: CORS, ranges, size, magic-byte format sni
 lib/duckdb/             bundles (swappable CDN → R2), client, loader + lockdown
 lib/profile/            SQL builders, orchestration, shape masking, redaction
 lib/hypotheses/         shared schema, expression guard, local evaluation
-worker/                 Hono: /api/health, /api/hypotheses  — the only server code
+worker/                 Hono: /api/health, /api/hypotheses  (the only server code)
 ```
 
 `lib/duckdb/bundles.ts` is the only file that knows where the WebAssembly comes from. It cannot
-ship in Cloudflare's static assets — `duckdb-eh.wasm` is 34 MiB against a 25 MiB per-file limit —
-so it loads from jsDelivr. To self-host, upload the bundle to R2 and set
+ship in Cloudflare's static assets, since `duckdb-eh.wasm` is 34 MiB against a 25 MiB per-file
+limit, so it loads from jsDelivr. To self-host, upload the bundle to R2 and set
 `NEXT_PUBLIC_DUCKDB_BASE_URL`; nothing else changes.
 
 ## Deploy
@@ -194,7 +194,7 @@ domain. Without it, anyone who finds the URL can spend your API key.
 Note: Worker-level Access policies do not support WebSockets, which is one reason this app uses a
 single request/response rather than a streaming socket.
 
-## One request per round — and you can read every one
+## One request per round, and you can read every one
 
 Each round makes exactly **one** request and gets **one** response. There is no agent
 loop, no tool use, and no retry-with-follow-up: the model is asked once for structured output and
@@ -204,13 +204,13 @@ to ask for another turn even if it wanted one.
 That is measured rather than asserted. `worker/index.ts` wraps `fetch` in a counter and reports
 `httpAttempts` on every response, so the number shown in the UI is the real one. The transcript
 keeps every round, selectable by number. If it ever reads
-above 1, the SDK resent the same query after a transient failure — the UI says so explicitly
+above 1, the SDK resent the same query after a transient failure, and the UI says so explicitly
 rather than letting it look like an extra question. `test/exchange.test.ts` drives the Worker with
 a recording client and asserts one request, one user message, and no `tools` field.
 
 The **Transcript** panel shows the exchange verbatim: the system prompt, the user message, and the
 model's raw structured output, plus model, token counts, latency and stop reason. Those strings
-are the ones actually sent — recorded in the Worker at the point of the call, not reconstructed
+are the ones actually sent, recorded in the Worker at the point of the call, not reconstructed
 afterwards, since a reconstruction would defeat the point of showing them.
 
 ## Results appear as they are tested
@@ -221,7 +221,7 @@ verdict, with an `n of m tested` counter. Checks run over a pool of DuckDB conne
 ready, instead of the page sitting still until the slowest one finishes.
 
 An honest caveat: the `eh` WebAssembly build is single-threaded, so this is not true CPU
-parallelism — DuckDB still executes one query at a time. What the pool actually buys is that
+parallelism. DuckDB still executes one query at a time. What the pool actually buys is that
 queries queue inside the worker rather than each waiting for a JS round trip, and that results
 stream. If the threaded build is ever enabled it becomes real parallelism with no code change.
 
@@ -237,7 +237,7 @@ round.
 **Export Report** downloads the whole run as a single Markdown file: every table loaded, a summary,
 and each hypothesis with its verdict, violation count and share, duration, rationale, the check as
 written, and the SQL that produced it folded into a `<details>` block. Violating-row previews are
-deliberately left out — they are the one thing that was never meant to travel.
+deliberately left out, because they are the one thing that was never meant to travel.
 
 That download matters more than it looks, because **nothing in this app is persisted**. There is no
 local storage, no session storage, no URL state and no server-side record; every result lives in
@@ -248,7 +248,7 @@ your sources have to be loaded again. A saved report is the only record that out
 
 Four layers, in descending order of how much they are actually worth:
 
-1. **Cloudflare Access — the only one that enforces anything.** A crawler cannot authenticate, so
+1. **Cloudflare Access, the only one that enforces anything.** A crawler cannot authenticate, so
    it gets the login redirect instead of your page. Everything below is a request that a
    well-behaved crawler chooses to honour; Access is the part that does not depend on goodwill.
 2. **`preview_urls: false`** in `wrangler.jsonc`. Preview URLs publish an extra hostname
@@ -260,13 +260,13 @@ Four layers, in descending order of how much they are actually worth:
    *already has* the URL not to index it.
 4. **`robots.txt` and robots meta tags.** Generated by `app/robots.ts` from the list in
    `lib/crawlers.ts`: a blanket `User-agent: *` plus ~50 named crawlers. The names matter because
-   `Google-Extended` and `Applebot-Extended` are not crawlers at all — they are AI-training
+   `Google-Extended` and `Applebot-Extended` are not crawlers at all. They are AI-training
    opt-out tokens that only take effect when addressed by name, and are ignored under the
    wildcard.
 
 `Referrer-Policy: no-referrer` is also set. That one is not about crawlers: the app fetches
 data URLs you supply, and without it the `Referer` header would hand this site's address to
-every host you point it at — which is exactly how a private URL stops being private.
+every host you point it at, which is exactly how a private URL stops being private.
 
 The remaining exposure is a link. Crawlers find URLs mostly by following them, so pasting the
 address into a public issue, a shared doc, or a chat that indexes its history will do more to make
@@ -279,7 +279,7 @@ cap. Server-side refusal fallbacks are enabled, as Anthropic recommends by defau
 a safety classifier declines, the API retries on a fallback model rather than returning nothing.
 
 Cost is worth knowing before you reach for round 3. Commerce sends ~39k input tokens per round and
-gets 7-9k back, so at Opus 5 rates that is roughly **$0.40 per round** — about $1.20 for a full
+gets 7-9k back, so at Opus 5 rates that is roughly **$0.40 per round**, about $1.20 for a full
 three-round run, and 80-110s of latency each. Sonnet 5 is about a fifth of that if you would rather
 trade depth for cost; it is a one-line change in `worker/hypotheses.ts`. The client sends only a profile, so the endpoint cannot be repurposed as a general-purpose
 Claude proxy. Structured outputs (`messages.parse` + `zodOutputFormat`) guarantee the response
@@ -299,7 +299,7 @@ loads a real remote Parquet file end to end.
 
 - Single table per session; no joins across sources yet.
 - Large files are held in memory (see the trade-off above).
-- Single-threaded DuckDB — the threaded build needs site-wide cross-origin isolation.
+- Single-threaded DuckDB, since the threaded build needs site-wide cross-origin isolation.
 - Hypotheses that fail to parse are reported as "not run" rather than repaired.
 - Concurrency is bounded by the single-threaded WebAssembly build (see above).
 - Nothing is persisted. A reload loses the loaded data and every round; export before you leave.

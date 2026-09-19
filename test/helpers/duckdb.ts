@@ -18,8 +18,8 @@ export interface TestConn {
 
 /**
  * An adapter presenting the blocking Node bindings through the async surface
- * that lib/duckdb/load.ts expects, so the real loader — including the
- * enable_external_access lockdown — can be exercised in tests.
+ * that lib/duckdb/load.ts expects, so the real loader, including the
+ * enable_external_access lockdown, can be exercised in tests.
  */
 export interface TestDb {
   /** Shaped like AsyncDuckDB, enough for lib/duckdb/load.ts. */

@@ -2,7 +2,7 @@
  * Curated datasets that ship with the app, served from public/data.
  *
  * These are same-origin and known-good, so they skip the URL validation that
- * user-supplied sources go through — there is no CORS question to answer and no
+ * user-supplied sources go through. There is no CORS question to answer and no
  * format to sniff.
  */
 

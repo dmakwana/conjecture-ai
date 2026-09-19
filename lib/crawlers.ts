@@ -3,7 +3,7 @@
  *
  * A blanket `User-agent: *` rule already covers well-behaved crawlers, so why
  * list these? Because several of the most important entries are not crawlers at
- * all — Google-Extended and Applebot-Extended are opt-out control tokens that
+ * all. Google-Extended and Applebot-Extended are opt-out control tokens that
  * only take effect when addressed by name, and are ignored under the wildcard.
  * Others (Bytespider, CCBot) have a track record of honouring only rules that
  * name them. Naming costs nothing and covers those cases.
@@ -24,7 +24,7 @@ export const AI_CRAWLERS = [
   "meta-externalagent", "meta-externalfetcher", "FacebookBot",
   // Perplexity
   "PerplexityBot", "Perplexity-User",
-  // Common Crawl — feeds a large share of public training corpora
+  // Common Crawl, which feeds a large share of public training corpora
   "CCBot",
   // Others
   "Bytespider", "Amazonbot", "Applebot", "cohere-ai",

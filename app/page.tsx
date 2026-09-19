@@ -72,7 +72,7 @@ export default function Page() {
    *
    * Every add and remove goes through here. The lockdown that protects against
    * generated SQL reaching the network is irreversible per database, so the
-   * database is rebuilt wholesale rather than mutated — see rebuildDatabase.
+   * database is rebuilt wholesale rather than mutated. See rebuildDatabase.
    */
   const rebuild = useCallback(async (next: Source[]) => {
     setError(null);
@@ -297,12 +297,12 @@ export default function Page() {
     const round = priorRounds.length + 1;
 
     try {
-      // One request, one response per round — see worker/hypotheses.ts.
+      // One request, one response per round. See worker/hypotheses.ts.
       const response = await requestHypotheses(profile, priorRounds);
       setExchanges((prev) => [...prev, response.exchange]);
 
       // Ids are assigned per response, so round 2 would hand out h1 again and
-      // collide with round 1 — breaking React keys and result routing alike.
+      // collide with round 1, breaking React keys and result routing alike.
       const hypotheses = response.hypotheses.map((h, i) => ({
         ...h,
         id: `r${round}h${i + 1}`,
@@ -404,7 +404,7 @@ export default function Page() {
         <h1 className="text-xl font-semibold tracking-tight">duck-invariant</h1>
         <p className="muted text-sm mt-1">
           Profile your data, then test falsifiable hypotheses about it. Everything runs
-          entirely in your browser — nothing is uploaded, and your data never leaves this
+          entirely in your browser: nothing is uploaded, and your data never leaves this
           page.
         </p>
       </header>

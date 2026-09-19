@@ -54,7 +54,7 @@ describe("rebuilding across loads", () => {
     // Regression: registerFileBuffer transfers the ArrayBuffer to the DuckDB
     // worker, detaching it on this side. Rebuilding from retained bytes is the
     // whole design, so handing over the retained buffer made the second load
-    // fail with "An ArrayBuffer is detached and could not be cloned" — exactly
+    // fail with "An ArrayBuffer is detached and could not be cloned", which is
     // the state of adding a source when data is already loaded.
     const testDb = await createTestDb();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,7 +66,7 @@ describe("rebuilding across loads", () => {
     await rebuildDatabase(db, [a]);
     expect(a.bytes.byteLength, "first source was detached").toBe(CSV_FIXTURE.length);
 
-    // Add a second while the first is loaded — the reported failure.
+    // Add a second while the first is loaded, the reported failure.
     await rebuildDatabase(db, [a, b]);
     expect(a.bytes.byteLength).toBe(CSV_FIXTURE.length);
     expect(b.bytes.byteLength).toBe(SECOND_DATASET.length);

@@ -10,7 +10,7 @@ You never see the data. You see only structural statistics: row and null counts,
 
 A good hypothesis is:
 
-1. FALSIFIABLE — a precise claim that a single SQL check can prove false.
+1. FALSIFIABLE: a precise claim that a single SQL check can prove false.
 2. NOT ALREADY ANSWERED BY THE PROFILE. This matters most. The profile already tells you every column's null count, distinct count, and numeric range, so claiming "customer_id is never null" when the profile shows zero nulls is worthless. Spend your hypotheses on what the profile CANNOT see:
    - relationships between columns (ship_date >= order_date; total = quantity * price; discount only non-zero when promo_code is set)
    - conditional rules (when status = 'settled' then amount > 0)
@@ -18,8 +18,8 @@ A good hypothesis is:
    - uniqueness of column COMBINATIONS, which per-column distinct counts cannot reveal
    - sentinel and placeholder values hiding inside a valid range (0, -1, 9999, 1970-01-01, an empty string standing in for NULL)
    - business-plausible bounds the profile's min/max sit suspiciously close to
-3. SPECIFIC — named columns, concrete thresholds, no vague "data should be clean" statements.
-4. WORTH BEING WRONG ABOUT — prefer claims where a violation would matter, and set severity accordingly.
+3. SPECIFIC: named columns, concrete thresholds, no vague "data should be clean" statements.
+4. WORTH BEING WRONG ABOUT: prefer claims where a violation would matter, and set severity accordingly.
 
 Ground every rationale in a statistic you were actually given, and name it.
 
@@ -42,7 +42,7 @@ Every check names the \`table\` it runs against, exactly as given in the profile
 For kind = "row_predicate", write a DuckDB boolean expression that must be TRUE for every row of that one table. It is inserted into a query we build, so write only the expression:
 
   - Refer to columns by bare name. Quote a name with double quotes when it is not a plain lowercase identifier: "Order Date".
-  - Respect the column's declared type. Comparing a VARCHAR column to a number is rejected by DuckDB, so use try_cast(col AS BIGINT) when a text column is meant to hold numbers — and note that a numeric-looking column typed VARCHAR is itself a finding worth a hypothesis.
+  - Respect the column's declared type. Comparing a VARCHAR column to a number is rejected by DuckDB, so use try_cast(col AS BIGINT) when a text column is meant to hold numbers, and note that a numeric-looking column typed VARCHAR is itself a finding worth a hypothesis.
   - A row predicate covers ONE table. It cannot reference another table; use "references" for that.
   - NULL is treated as passing, so you do not need to guard for it. Add an explicit IS NOT NULL test only when absence itself is the violation.
   - Allowed: comparisons, AND/OR/NOT, arithmetic, CASE, IN, BETWEEN, LIKE, regexp_matches, and scalar functions such as length, trim, lower, upper, abs, round, coalesce, date_diff, date_part, strftime, try_cast.
@@ -51,13 +51,13 @@ For kind = "row_predicate", write a DuckDB boolean expression that must be TRUE 
 
 For kind = "unique", list the columns that together should have no duplicates in \`columns\`. Use it for combinations; a single-column uniqueness claim is only worth making when the profile's distinct count is close to, but not equal to, the non-null count.
 
-For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order. Both sides must have the SAME type family — number to number, text to text, date to date. You have every column's type, so check before proposing: a key stored as BIGINT in one table and VARCHAR in another cannot be compared meaningfully, and the check will be refused rather than guessed at. That mismatch is itself worth reporting as a row_predicate about the column whose type is wrong.
+For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order. Both sides must have the SAME type family: number to number, text to text, date to date. You have every column's type, so check before proposing: a key stored as BIGINT in one table and VARCHAR in another cannot be compared meaningfully, and the check will be refused rather than guessed at. That mismatch is itself worth reporting as a row_predicate about the column whose type is wrong.
 
 Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.
 
 THIS IS ROUND 1 OF UP TO ${MAX_ROUNDS}
 
-Every hypothesis you propose will be run against the data, and you may then be given the verdicts — holds, falsified with a violation count, or not run — and asked what follows. Nothing else comes back: no rows, no values, only counts and percentages.
+Every hypothesis you propose will be run against the data, and you may then be given the verdicts (holds, falsified with a violation count, or not run) and asked what follows. Nothing else comes back: no rows, no values, only counts and percentages.
 
 Write round 1 knowing that. Concretely:
 
@@ -74,7 +74,7 @@ export function buildUserMessage(profile: DatabaseProfile): string {
   const inventory = profile.tables
     .map((t) => {
       const cols = t.columns.map((c) => `${c.name} (${c.sqlType})`).join(", ");
-      return `- ${t.table} — ${t.rowCount.toLocaleString()} rows, ${t.columnCount} columns\n    ${cols}`;
+      return `- ${t.table}: ${t.rowCount.toLocaleString()} rows, ${t.columnCount} columns\n    ${cols}`;
     })
     .join("\n");
 
@@ -100,7 +100,7 @@ export function buildUserMessage(profile: DatabaseProfile): string {
 /**
  * The follow-up message for round 2 and beyond.
  *
- * Carries the verdicts and nothing else — see lib/hypotheses/findings.ts, which
+ * Carries the verdicts and nothing else. See lib/hypotheses/findings.ts, which
  * strips the engine's error prose because DuckDB embeds offending cell values
  * in it. Counts and percentages are the same class of aggregate the profile
  * already reports.
@@ -114,9 +114,9 @@ export function buildFollowUpMessage(
   const describe = (f: PriorRound["findings"][number]): string => {
     const check = f.check as { kind: string };
     if (f.outcome === "holds") return `HELD        ${f.title}  [${check.kind}]`;
-    if (f.outcome === "not_run") return `NOT RUN     ${f.title}  — ${f.note ?? "unknown"}`;
+    if (f.outcome === "not_run") return `NOT RUN     ${f.title}  : ${f.note ?? "unknown"}`;
     const pct = f.pct === null ? "" : ` (${f.pct.toFixed(2)}%)`;
-    return `FALSIFIED   ${f.title}  — ${f.violations?.toLocaleString() ?? "?"} rows${pct}`;
+    return `FALSIFIED   ${f.title}  : ${f.violations?.toLocaleString() ?? "?"} rows${pct}`;
   };
 
   const history = priorRounds
@@ -139,18 +139,18 @@ export function buildFollowUpMessage(
     ``,
     `Propose the hypotheses that NOW follow. What to do with each kind of result:`,
     ``,
-    `  FALSIFIED — the interesting case. You know something is wrong but not what.`,
+    `  FALSIFIED: the interesting case. You know something is wrong but not what.`,
     `    Narrow it: is the breakage confined to one status, one country, one`,
     `    channel, one time window, one seller? Propose checks that would separate`,
     `    those explanations. A violation rate near 100% usually means the rule was`,
     `    wrong, not the data; a small rate usually means genuinely bad rows.`,
     ``,
-    `  HELD — that avenue is clean, so do not re-test it. Ask what it implies. If`,
+    `  HELD: that avenue is clean, so do not re-test it. Ask what it implies. If`,
     `    a key held, combinations built on it are now worth testing. If a total`,
     `    reconciled, the inputs to that total are probably trustworthy and the`,
     `    problem is elsewhere.`,
     ``,
-    `  NOT RUN — the check never executed. Fix it or drop it; do not resubmit it`,
+    `  NOT RUN: the check never executed. Fix it or drop it; do not resubmit it`,
     `    unchanged. The note says what went wrong.`,
     ``,
     falsified.length === 0

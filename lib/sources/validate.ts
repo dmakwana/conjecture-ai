@@ -179,7 +179,7 @@ export async function validateSource(rawUrl: string): Promise<ValidationReport> 
           id: "ranges",
           label: "Range requests",
           status: "warn",
-          detail: "Not supported — the whole file will be downloaded.",
+          detail: "Not supported, so the whole file will be downloaded.",
         },
   );
 
@@ -201,7 +201,7 @@ export async function validateSource(rawUrl: string): Promise<ValidationReport> 
       id: "size",
       label: "Size",
       status: "warn",
-      detail: `${formatBytes(sizeBytes)} — large files are held in browser memory and may be slow.`,
+      detail: `${formatBytes(sizeBytes)}. Large files are held in browser memory and may be slow.`,
     });
   } else {
     checks.push({

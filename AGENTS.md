@@ -14,8 +14,8 @@ Two invariants hold this project together. Both are load-bearing; check them bef
 anything in `lib/profile/` or `lib/hypotheses/`.
 
 1. **No cell value leaves the browser.** The only outbound payload is `TableProfile`. Adding a
-   field that carries a value — a min/max on a string column, a top-k of actual values, a sample
-   row — breaks the product's central claim. `lib/profile/redaction.ts` and the PII fixtures in
+   field that carries a value, such as a min/max on a string column, a top-k of actual values or
+   a sample row, breaks the product's central claim. `lib/profile/redaction.ts` and the PII fixtures in
    `test/profile.test.ts` are there to catch exactly that.
 2. **Model-authored SQL is contained.** Claude emits structured checks, never raw SQL. The `FROM`
    clause is always ours. `lib/hypotheses/guard.ts` rejects `SELECT`, semicolons, comments, and
@@ -26,10 +26,10 @@ Practical notes:
 
 - DuckDB coerces across type families instead of erroring. A join between a BIGINT key and a
   zero-padded VARCHAR key silently matches `'0001'` to `1`, so any comparison built across two
-  columns must check `typeFamily` first — see `assertComparable` in `lib/hypotheses/evaluate.ts`.
+  columns must check `typeFamily` first. See `assertComparable` in `lib/hypotheses/evaluate.ts`.
   A quiet wrong answer is the worst failure mode this tool has.
 - Aggregates need explicit casts. `sum()` over BIGINT returns HUGEINT, which Arrow delivers as a
-  Decimal128 word array that reads as `0` if you are not careful — a silent wrong answer, not an
+  Decimal128 word array that reads as `0` if you are not careful: a silent wrong answer, not an
   error. Cast to BIGINT or DOUBLE in SQL; `asNumber` in `lib/arrow.ts` is the backstop.
 - Import `@duckdb/duckdb-wasm` dynamically from client code. A static import breaks the static
   export build.

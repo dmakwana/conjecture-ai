@@ -45,7 +45,7 @@ export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
       <Modal
         open={open}
         title="Inspect Exchange"
-        subtitle="Recorded verbatim — exactly what was asked, and exactly what came back."
+        subtitle="Recorded verbatim: exactly what was asked, and exactly what came back."
         onClose={() => setOpen(false)}
       >
         {exchanges.length > 1 && (
@@ -72,7 +72,7 @@ export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
           {(exchange.latencyMs / 1000).toFixed(1)}s · {exchange.httpAttempts} HTTP
           request{exchange.httpAttempts === 1 ? "" : "s"}
           {retried &&
-            " — more than one means the same query was resent after a transient failure, not a second question."}
+            ". More than one means the same query was resent after a transient failure, not a second question."}
         </p>
 
         <div className="flex gap-1 mb-3">
