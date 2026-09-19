@@ -2,7 +2,7 @@
 
 **[conjecture-ai.com](https://conjecture-ai.com)**
 
-Point it at one or more datasets and it proposes **falsifiable hypotheses** about them, tests each
+Point it at one or more datasets and it proposes **falsifiable invariant hypotheses** about them, tests each
 one locally, and tells you which are false. Feed the verdicts back and it narrows down *why*.
 
 Everything runs in your browser. DuckDB-WASM loads the files, profiles every column and evaluates
