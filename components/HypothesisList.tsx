@@ -94,35 +94,69 @@ export function HypothesisList({
     }
   }
 
-  // Group by round so a follow-up reads as a continuation rather than a new
-  // unrelated list.
   const rounds = [...new Set(rows.map((r) => r.round))].sort((a, b) => a - b);
+  const latest = rounds[rounds.length - 1] ?? 1;
+  const [shown, setShown] = useState(latest);
+  const [seenLatest, setSeenLatest] = useState(latest);
+
+  // Follow the newest round as it arrives rather than stranding the user on the
+  // one they were reading. Adjusted during render rather than in an effect, so
+  // there is no second render pass showing the stale round first.
+  if (latest !== seenLatest) {
+    setSeenLatest(latest);
+    setShown(latest);
+  }
+
+  const visible = rounds.includes(shown) ? shown : latest;
 
   return (
-    <div className="space-y-4">
-      {rounds.map((round) => (
-        <RoundSection
-          key={round}
-          round={round}
-          total={rounds.length}
-          rows={rows.filter((r) => r.round === round)}
-          openRows={openRows}
-          openSql={openSql}
-          preview={preview}
-          previewError={previewError}
-          onToggleRows={toggleRows}
-          onToggleSql={(id) => setOpenSql(openSql === id ? null : id)}
-        />
-      ))}
+    <div className="space-y-3">
+      {rounds.length > 1 && (
+        <nav className="flex items-center gap-1 text-sm" role="tablist">
+          <span className="muted text-xs mr-1">rounds</span>
+          {rounds.map((round) => {
+            const inRound = rows.filter((r) => r.round === round);
+            const bad = inRound.filter((r) => r.result?.status === "falsified").length;
+            return (
+              <button
+                key={round}
+                role="tab"
+                aria-selected={round === visible}
+                onClick={() => setShown(round)}
+                className={`px-3 py-1.5 rounded-md transition ${
+                  round === visible ? "panel font-medium" : "muted hover:underline"
+                }`}
+              >
+                {round}
+                {bad > 0 && (
+                  <span className="ml-1.5 text-red-600 dark:text-red-400 text-xs">
+                    {bad}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
+      <RoundSection
+        round={visible}
+        rows={rows.filter((r) => r.round === visible)}
+        openRows={openRows}
+        openSql={openSql}
+        preview={preview}
+        previewError={previewError}
+        onToggleRows={toggleRows}
+        onToggleSql={(id) => setOpenSql(openSql === id ? null : id)}
+      />
     </div>
   );
 }
 
 function RoundSection({
-  round, total, rows, openRows, openSql, preview, previewError, onToggleRows, onToggleSql,
+  round, rows, openRows, openSql, preview, previewError, onToggleRows, onToggleSql,
 }: {
   round: number;
-  total: number;
   rows: HypothesisRow[];
   openRows: string | null;
   openSql: string | null;
@@ -136,16 +170,14 @@ function RoundSection({
 
   return (
     <section>
-      {total > 1 && (
-        <header className="flex items-baseline gap-3 mb-1.5">
-          <h2 className="text-sm font-medium">Round {round}</h2>
-          <span className="muted text-xs">
-            {round === 1 ? "from the profile" : "informed by earlier results"} ·{" "}
-            {tested} of {rows.length} tested
-            {falsified > 0 && ` · ${falsified} falsified`}
-          </span>
-        </header>
-      )}
+      <header className="flex items-baseline gap-3 mb-1.5">
+        <h2 className="text-sm font-medium">Round {round}</h2>
+        <span className="muted text-xs">
+          {round === 1 ? "from the profile" : "informed by earlier results"} ·{" "}
+          {tested} of {rows.length} tested
+          {falsified > 0 && ` · ${falsified} falsified`}
+        </span>
+      </header>
       <ul className="panel rounded-md divide-y hairline">
       {rows.map(({ hypothesis, result, running }) => {
         const cross = isCrossTable(hypothesis.check);

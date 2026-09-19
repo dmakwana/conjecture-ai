@@ -19,6 +19,7 @@ import {
   type Finding, type PriorRound,
 } from "@/lib/hypotheses/findings";
 import { MAX_ROUNDS } from "@/worker/prompt";
+import { buildMarkdownReport, reportFilename } from "@/lib/report";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { HypothesisList, type HypothesisRow } from "@/components/HypothesisList";
 import { ExchangePanel } from "@/components/ExchangePanel";
@@ -352,6 +353,26 @@ export default function Page() {
     }
   }, [profile, loaded, schema, rowCounts, priorRounds]);
 
+  /**
+   * Download the run as Markdown. Nothing here is persisted, so a saved file is
+   * the only record that outlives the tab.
+   */
+  const downloadReport = useCallback(() => {
+    if (!profile || !loaded) return;
+    const markdown = buildMarkdownReport({ profile, loaded, rows });
+    const url = URL.createObjectURL(
+      new Blob([markdown], { type: "text/markdown;charset=utf-8" }),
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = reportFilename();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke on the next tick; revoking synchronously can cancel the download.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, [profile, loaded, rows]);
+
   const inspect = useCallback(
     async (h: Hypothesis) => {
       if (!connRef.current || !schema) throw new Error("No data loaded.");
@@ -463,6 +484,15 @@ export default function Page() {
                 {falsified > 0 && ` · ${falsified} falsified`}
                 {sqlMs > 0 && ` · ${sqlMs} ms of SQL`}
               </span>
+            )}
+
+            {rows.length > 0 && !busy && (
+              <button
+                onClick={downloadReport}
+                className="panel rounded-md px-3 py-1.5 text-sm hover:ring-2 hover:ring-blue-500/30"
+              >
+                Export report
+              </button>
             )}
 
             {priorRounds.length >= MAX_ROUNDS && (

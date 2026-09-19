@@ -29,8 +29,7 @@ export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
           <span className="muted ml-2">
             {exchanges.length} round{exchanges.length === 1 ? "" : "s"} ·{" "}
             {totalAttempts} request{totalAttempts === 1 ? "" : "s"} ·{" "}
-            {exchanges.length} response{exchanges.length === 1 ? "" : "s"} ·{" "}
-            {exchange.model}
+            {exchanges.length} response{exchanges.length === 1 ? "" : "s"}
           </span>
         </div>
         <button

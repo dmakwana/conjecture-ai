@@ -225,6 +225,21 @@ parallelism — DuckDB still executes one query at a time. What the pool actuall
 queries queue inside the worker rather than each waiting for a JS round trip, and that results
 stream. If the threaded build is ever enabled it becomes real parallelism with no code change.
 
+## Reading and keeping the results
+
+Rounds are shown one at a time, newest first, with tabs across the top carrying a count of what
+each one falsified. Reading a finished round while a new one is still running does not move you.
+
+**Export report** downloads the whole run as a single Markdown file: every table loaded, a summary,
+and each hypothesis with its verdict, violation count and share, duration, rationale, the check as
+written, and the SQL that produced it folded into a `<details>` block. Violating-row previews are
+deliberately left out — they are the one thing that was never meant to travel.
+
+That download matters more than it looks, because **nothing in this app is persisted**. There is no
+local storage, no session storage, no URL state and no server-side record; every result lives in
+React state in the open tab. If the page reloads, the DuckDB instance is rebuilt from scratch and
+your sources have to be loaded again. A saved report is the only record that outlives the tab.
+
 ## Keeping it off search engines and AI crawlers
 
 Four layers, in descending order of how much they are actually worth:
@@ -272,7 +287,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-107 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+117 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 
@@ -283,3 +298,4 @@ loads a real remote Parquet file end to end.
 - Single-threaded DuckDB — the threaded build needs site-wide cross-origin isolation.
 - Hypotheses that fail to parse are reported as "not run" rather than repaired.
 - Concurrency is bounded by the single-threaded WebAssembly build (see above).
+- Nothing is persisted. A reload loses the loaded data and every round; export before you leave.
