@@ -56,3 +56,15 @@ body {
 dialog {
   margin: auto;
 }
+
+/*
+ * Keep a closed <dialog> hidden.
+ *
+ * The UA hides it with `dialog:not([open]) { display: none }`, but any display
+ * utility on the element beats that, so `flex` on a dialog makes it render
+ * permanently: fixed, full-bleed, and blank. This selector is (0,1,1) against
+ * a utility class's (0,1,0), so it wins back without !important.
+ */
+dialog:not([open]) {
+  display: none;
+}

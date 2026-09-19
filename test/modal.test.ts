@@ -5,6 +5,20 @@ const css = readFileSync("app/globals.css", "utf8");
 const modal = readFileSync("components/Modal.tsx", "utf8");
 
 describe("native browser chrome", () => {
+  it("keeps a closed dialog hidden despite display utilities", () => {
+    // Regression: adding Tailwind's `flex` for the fixed-size mode set
+    // display:flex unconditionally, which beat the UA's
+    // `dialog:not([open]) { display: none }`. The SQL Console then rendered on
+    // page load as a blank full-bleed panel over everything.
+    expect(css).toMatch(/dialog:not\(\[open\]\)\s*\{[^}]*display:\s*none/);
+  });
+
+  it("only needs that rule because the dialog carries a display utility", () => {
+    // If this stops being true the rule above is merely belt and braces, but
+    // while it holds the rule is load-bearing.
+    expect(modal).toMatch(/\bflex flex-col\b/);
+  });
+
   it("declares color-scheme so scrollbars follow the theme", () => {
     // Scrollbars, form controls and the dialog backdrop are painted by the
     // browser. Swapping our CSS variables tells it nothing, so without this the
