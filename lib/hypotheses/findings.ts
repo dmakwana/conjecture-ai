@@ -77,6 +77,8 @@ export function sanitizeNote(reason: string, knownIdentifiers: Set<string>): str
     category = "unknown table";
   } else if (/unknown column/.test(lower)) {
     category = "unknown column";
+  } else if (/types differ/.test(lower)) {
+    category = "column types differ, so the comparison is not meaningful";
   } else if (/column count|column counts differ/.test(lower)) {
     category = "column counts differ";
   } else if (/referenced column|not found in from clause|binder/.test(lower)) {

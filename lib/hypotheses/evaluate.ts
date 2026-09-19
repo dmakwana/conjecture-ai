@@ -9,16 +9,41 @@ export const VIOLATION_PREVIEW_LIMIT = 200;
 
 /** The schema every check is validated against before any SQL is built. */
 export interface Schema {
-  /** table name -> its column names */
-  tables: Map<string, string[]>;
+  /** table name -> column name -> DuckDB type */
+  tables: Map<string, Map<string, string>>;
 }
 
 export function schemaFrom(
-  tables: { table: string; columns: { name: string }[] }[],
+  tables: { table: string; columns: { name: string; sqlType: string }[] }[],
 ): Schema {
   return {
-    tables: new Map(tables.map((t) => [t.table, t.columns.map((c) => c.name)])),
+    tables: new Map(
+      tables.map((t) => [t.table, new Map(t.columns.map((c) => [c.name, c.sqlType]))]),
+    ),
   };
+}
+
+/**
+ * Comparison families. Two columns can only be compared meaningfully if they
+ * land in the same one.
+ *
+ * This exists because DuckDB will happily coerce across families instead of
+ * complaining: joining a BIGINT key to a zero-padded VARCHAR key silently
+ * matches '0001' to 1, so a reference check reports far fewer violations than
+ * are really there. A quiet wrong answer is worse than a refusal, and a key
+ * whose type differs between two tables is itself a defect worth surfacing.
+ */
+export type TypeFamily = "numeric" | "text" | "temporal" | "boolean" | "other";
+
+export function typeFamily(sqlType: string): TypeFamily {
+  const t = sqlType.toUpperCase().trim();
+  if (/^(TINYINT|SMALLINT|INTEGER|BIGINT|HUGEINT|UHUGEINT|UTINYINT|USMALLINT|UINTEGER|UBIGINT|FLOAT|DOUBLE|REAL|DECIMAL|NUMERIC)/.test(t)) {
+    return "numeric";
+  }
+  if (/^(VARCHAR|CHAR|TEXT|STRING|UUID)/.test(t)) return "text";
+  if (/^(DATE|TIMESTAMP|TIME)/.test(t)) return "temporal";
+  if (t === "BOOLEAN") return "boolean";
+  return "other";
 }
 
 function errorMessage(err: unknown): string {
@@ -44,7 +69,37 @@ function resolveTable(schema: Schema, name: string): string {
 }
 
 function columnsOf(schema: Schema, table: string): string[] {
-  return schema.tables.get(table) ?? [];
+  return [...(schema.tables.get(table)?.keys() ?? [])];
+}
+
+function typeOf(schema: Schema, table: string, column: string): string {
+  return schema.tables.get(table)?.get(column) ?? "UNKNOWN";
+}
+
+/**
+ * Refuse a reference whose two sides are not comparable, naming both types.
+ *
+ * Returning a clear refusal rather than a number is the point: the alternative
+ * is either DuckDB's conversion error (which embeds a cell value) or, worse, a
+ * silently coerced count that is simply wrong. The refusal also reaches the
+ * model as a finding, so a later round can propose a corrected check.
+ */
+function assertComparable(
+  schema: Schema,
+  table: string,
+  columns: string[],
+  refTable: string,
+  refColumns: string[],
+): void {
+  for (const [i, column] of columns.entries()) {
+    const left = typeOf(schema, table, column);
+    const right = typeOf(schema, refTable, refColumns[i]);
+    if (typeFamily(left) !== typeFamily(right)) {
+      throw new Error(
+        `Cannot compare ${table}.${column} (${left}) with ${refTable}.${refColumns[i]} (${right}) — types differ.`,
+      );
+    }
+  }
 }
 
 /**
@@ -83,6 +138,7 @@ export function violationCountQuery(check: Check, schema: Schema): string {
   if (left.columns.length !== right.columns.length) {
     throw new Error("Referencing and referenced column counts differ.");
   }
+  assertComparable(schema, table, left.columns, refTable, right.columns);
 
   // Rows with a NULL key are skipped, matching normal foreign-key semantics:
   // an absent value is not a broken reference.
@@ -119,6 +175,7 @@ export function violationRowsQuery(check: Check, schema: Schema): string {
   if (!left.ok) throw new Error(left.reason);
   const right = guardColumns(check.referencesColumns, columnsOf(schema, refTable));
   if (!right.ok) throw new Error(right.reason);
+  assertComparable(schema, table, left.columns, refTable, right.columns);
 
   const notNull = left.columns.map((c) => `child.${quoteIdent(c)} IS NOT NULL`).join(" AND ");
   const join = left.columns

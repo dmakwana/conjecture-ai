@@ -42,6 +42,7 @@ Every check names the \`table\` it runs against, exactly as given in the profile
 For kind = "row_predicate", write a DuckDB boolean expression that must be TRUE for every row of that one table. It is inserted into a query we build, so write only the expression:
 
   - Refer to columns by bare name. Quote a name with double quotes when it is not a plain lowercase identifier: "Order Date".
+  - Respect the column's declared type. Comparing a VARCHAR column to a number is rejected by DuckDB, so use try_cast(col AS BIGINT) when a text column is meant to hold numbers — and note that a numeric-looking column typed VARCHAR is itself a finding worth a hypothesis.
   - A row predicate covers ONE table. It cannot reference another table; use "references" for that.
   - NULL is treated as passing, so you do not need to guard for it. Add an explicit IS NOT NULL test only when absence itself is the violation.
   - Allowed: comparisons, AND/OR/NOT, arithmetic, CASE, IN, BETWEEN, LIKE, regexp_matches, and scalar functions such as length, trim, lower, upper, abs, round, coalesce, date_diff, date_part, strftime, try_cast.
@@ -50,7 +51,7 @@ For kind = "row_predicate", write a DuckDB boolean expression that must be TRUE 
 
 For kind = "unique", list the columns that together should have no duplicates in \`columns\`. Use it for combinations; a single-column uniqueness claim is only worth making when the profile's distinct count is close to, but not equal to, the non-null count.
 
-For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order.
+For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order. Both sides must have the SAME type family — number to number, text to text, date to date. You have every column's type, so check before proposing: a key stored as BIGINT in one table and VARCHAR in another cannot be compared meaningfully, and the check will be refused rather than guessed at. That mismatch is itself worth reporting as a row_predicate about the column whose type is wrong.
 
 Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.
 

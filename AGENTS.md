@@ -24,6 +24,10 @@ anything in `lib/profile/` or `lib/hypotheses/`.
 
 Practical notes:
 
+- DuckDB coerces across type families instead of erroring. A join between a BIGINT key and a
+  zero-padded VARCHAR key silently matches `'0001'` to `1`, so any comparison built across two
+  columns must check `typeFamily` first — see `assertComparable` in `lib/hypotheses/evaluate.ts`.
+  A quiet wrong answer is the worst failure mode this tool has.
 - Aggregates need explicit casts. `sum()` over BIGINT returns HUGEINT, which Arrow delivers as a
   Decimal128 word array that reads as `0` if you are not careful — a silent wrong answer, not an
   error. Cast to BIGINT or DOUBLE in SQL; `asNumber` in `lib/arrow.ts` is the backstop.

@@ -144,7 +144,13 @@ independent layers stop it:
   `references` is deliberately direction-agnostic. Pointing `lineitem → orders` asks whether every
   line belongs to a real order; reversing it asks whether every order has at least one line. Both
   are worth testing, and the prompt says so. It is compiled to a `NOT EXISTS` anti-join that skips
-  NULL keys, exactly as a foreign key would.
+  NULL keys, exactly as a foreign key would — **but only when both sides are the same type
+  family**. DuckDB coerces across families silently rather than complaining, so a BIGINT key joined
+  to a zero-padded VARCHAR key matches `'0001'` to `1` and under-reports violations (measured: 1
+  reported where the truth was 3). The check is refused, naming both types, rather than returning a
+  number that is quietly wrong. A key whose type differs between two tables is itself a defect
+  worth surfacing, and the refusal reaches the next round so the model can propose a corrected
+  check.
 - **DuckDB has the capability taken away.** Every source is materialised into a table, then
   `SET enable_external_access=false` runs before any generated SQL. `test/integration.test.ts`
   proves this by asserting a remote read actually fails afterwards, and `test/reload.test.ts`
@@ -266,7 +272,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-100 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+107 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 
