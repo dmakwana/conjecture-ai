@@ -461,12 +461,12 @@ export default function Page() {
             * rewrites this one to the clean URL in production, so the address bar
             * ends up tidy either way.
             */}
-          <a
+          {/* <a
             href="/claude-code-transcript/index.html"
             className="underline underline-offset-2 hover:no-underline"
           >
             Read the Claude Code transcript that built this
-          </a>
+          </a> */}
         </p>
       </header>
 
