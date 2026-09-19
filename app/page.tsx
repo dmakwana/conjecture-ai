@@ -451,10 +451,18 @@ export default function Page() {
           All within the browser. Formats supported: parquet, csv, json.
         </p>
         <p className="muted text-xs mt-1.5">
-          {/* A static export under public/, not a Next route, so a plain anchor
-              rather than <Link>, which would try to client-side route to it. */}
+          {/*
+            * A static export under public/, not a Next route, so a plain anchor
+            * rather than <Link>, which would try to client-side route to it.
+            *
+            * Linked with the explicit index.html because `next dev` serves files
+            * out of public/ but not directory indexes: "/claude-code-transcript/"
+            * redirects to the non-slash form and then 404s there. Cloudflare
+            * rewrites this one to the clean URL in production, so the address bar
+            * ends up tidy either way.
+            */}
           <a
-            href="/claude-code-transcript/"
+            href="/claude-code-transcript/index.html"
             className="underline underline-offset-2 hover:no-underline"
           >
             Read the Claude Code transcript that built this

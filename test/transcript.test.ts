@@ -10,10 +10,13 @@ describe("published transcript", () => {
     expect(pages.length).toBeGreaterThan(0);
   });
 
-  it("is linked from the app", () => {
+  it("is linked from the app, by a path that works in dev as well", () => {
     // It is a static export under public/, not a Next route, so it is reachable
-    // only if something actually points at it.
-    expect(readFileSync("app/page.tsx", "utf8")).toContain('href="/claude-code-transcript/"');
+    // only if something points at it. The explicit index.html matters:
+    // `next dev` serves files from public/ but not directory indexes, so
+    // "/claude-code-transcript/" 404s locally while working in production.
+    const page = readFileSync("app/page.tsx", "utf8");
+    expect(page).toContain('href="/claude-code-transcript/index.html"');
   });
 
   it("links every page it claims to have", () => {

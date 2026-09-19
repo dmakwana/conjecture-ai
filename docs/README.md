@@ -27,7 +27,8 @@ Two notes on reading it:
 ## Published as HTML
 
 `public/claude-code-transcript/` is the same session rendered as browsable pages, linked from the
-app and served at `/claude-code-transcript`. Generated with
+app. The link points at `index.html` explicitly, because `next dev` serves files out of `public/`
+but not directory indexes, so the bare directory URL 404s locally while working in production. Generated with
 [simonw/claude-code-transcripts](https://github.com/simonw/claude-code-transcripts):
 
 ```bash
