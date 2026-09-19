@@ -201,6 +201,13 @@ export default function Page() {
           ),
         );
 
+        // validateSource may have learned the real size from Content-Range. If
+        // so, hold the download to it: a short read is otherwise invisible
+        // until DuckDB chokes on the missing footer.
+        const { verifyDownload } = await import("@/lib/sources/validate");
+        const short = verifyDownload(bytes, validation.format, validation.sizeBytes);
+        if (short) throw new Error(short);
+
         const label = decodeURIComponent(new URL(url).pathname.split("/").pop() || url);
         const next = [
           ...sources,

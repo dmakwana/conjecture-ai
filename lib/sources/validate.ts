@@ -120,7 +120,16 @@ export async function validateSource(rawUrl: string): Promise<ValidationReport> 
 
   let res: Response;
   try {
-    res = await fetch(url, { headers: { Range: "bytes=0-1023" }, mode: "cors" });
+    res = await fetch(url, {
+      headers: { Range: "bytes=0-1023" },
+      mode: "cors",
+      // Do NOT let this land in the HTTP cache. It is a 206 Partial Content of
+      // the first kilobyte, and a cached partial can be served to the full GET
+      // that follows, handing back a truncated file. That produced
+      // "No magic bytes found at end of file" on every URL source while the
+      // demo, which fetches once and never probes, worked fine.
+      cache: "no-store",
+    });
   } catch {
     // The browser refuses to tell us whether this was a CORS rejection or a dead
     // host, so probe again without CORS to work out which and say so honestly.
@@ -249,4 +258,37 @@ export async function validateSource(rawUrl: string): Promise<ValidationReport> 
   }
 
   return { ok: true, url: rawUrl, format, sizeBytes, supportsRanges, checks };
+}
+
+/**
+ * Check downloaded bytes really are the format we are about to read them as.
+ *
+ * DuckDB's complaint about a truncated file names an internal buffer and a
+ * missing footer, which tells a user nothing. Catching it here means a short or
+ * corrupt download is reported as a short download.
+ */
+export function verifyDownload(
+  bytes: Uint8Array,
+  format: SourceFormat,
+  expectedBytes?: number | null,
+): string | null {
+  if (bytes.byteLength === 0) return "The download was empty.";
+
+  if (expectedBytes != null && bytes.byteLength < expectedBytes) {
+    return `The download stopped early: got ${formatBytes(bytes.byteLength)} of ${formatBytes(expectedBytes)}.`;
+  }
+
+  if (format === "parquet") {
+    const magic = [0x50, 0x41, 0x52, 0x31]; // "PAR1"
+    const startsRight = magic.every((b, i) => bytes[i] === b);
+    const tail = bytes.byteLength - 4;
+    const endsRight = tail >= 4 && magic.every((b, i) => bytes[tail + i] === b);
+
+    if (!startsRight) return "That is not a Parquet file: it has no PAR1 header.";
+    if (!endsRight) {
+      return `The Parquet file is incomplete: it has a PAR1 header but no footer, so the download was cut short at ${formatBytes(bytes.byteLength)}.`;
+    }
+  }
+
+  return null;
 }

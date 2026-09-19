@@ -1,5 +1,5 @@
 import type * as duckdb from "@duckdb/duckdb-wasm";
-import type { SourceFormat } from "@/lib/sources/validate";
+import { verifyDownload, type SourceFormat } from "@/lib/sources/validate";
 import { asNumber, firstRow, toRows } from "@/lib/arrow";
 import { isSafeTableName } from "./tables";
 
@@ -133,6 +133,13 @@ export async function rebuildDatabase(
         throw new Error(`Unsafe table name: ${source.table}`);
       }
       onProgress?.(index, sources.length, source.label);
+
+      // Check before handing anything to DuckDB. Every route in (demo, URL,
+      // dropped file) funnels through here, so one check covers them all, and a
+      // truncated file is reported as a truncated file rather than as DuckDB's
+      // complaint about a missing footer in a buffer the user never named.
+      const problem = verifyDownload(source.bytes, source.format);
+      if (problem) throw new Error(`${source.label}: ${problem}`);
 
       const file = `source_${index}`;
       // Register a COPY, never the retained bytes.

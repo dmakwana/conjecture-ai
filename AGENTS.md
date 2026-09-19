@@ -28,6 +28,10 @@ Practical notes:
   zero-padded VARCHAR key silently matches `'0001'` to `1`, so any comparison built across two
   columns must check `typeFamily` first. See `assertComparable` in `lib/hypotheses/evaluate.ts`.
   A quiet wrong answer is the worst failure mode this tool has.
+- A ranged probe and a full GET of the same URL do not mix. `validateSource` asks for
+  `bytes=0-1023`; that 206 must be fetched with `cache: "no-store"` or the browser can serve the
+  cached partial to the download that follows, giving a 1 KB file. Always verify bytes with
+  `verifyDownload` before DuckDB sees them.
 - Aggregates need explicit casts. `sum()` over BIGINT returns HUGEINT, which Arrow delivers as a
   Decimal128 word array that reads as `0` if you are not careful: a silent wrong answer, not an
   error. Cast to BIGINT or DOUBLE in SQL; `asNumber` in `lib/arrow.ts` is the backstop.
