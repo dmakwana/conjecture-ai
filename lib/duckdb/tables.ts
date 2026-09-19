@@ -29,8 +29,12 @@ export function baseNameFor(label: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 
-  if (slug === "" || /^[0-9]/.test(slug)) return `t_${slug || "table"}`;
-  return RESERVED.has(slug) ? `${slug}_tbl` : slug;
+  // Capped to match isSafeTableName, which rejects anything longer. Without
+  // this a filename with a long stem produced a name that failed validation and
+  // aborted the whole load, after the previous dataset had already been cleared.
+  const capped = slug.slice(0, MAX_TABLE_NAME_LENGTH - 8);
+  if (capped === "" || /^[0-9]/.test(capped)) return `t_${capped || "table"}`;
+  return RESERVED.has(capped) ? `${capped}_tbl` : capped;
 }
 
 /**
@@ -48,6 +52,9 @@ export function uniqueTableName(label: string, taken: Iterable<string>): string 
 }
 
 /** True when a name is safe to interpolate into SQL without quoting. */
+/** Longest table name we will generate or accept. */
+export const MAX_TABLE_NAME_LENGTH = 64;
+
 export function isSafeTableName(name: string): boolean {
-  return /^[a-z][a-z0-9_]*$/.test(name) && name.length <= 64;
+  return /^[a-z][a-z0-9_]*$/.test(name) && name.length <= MAX_TABLE_NAME_LENGTH;
 }

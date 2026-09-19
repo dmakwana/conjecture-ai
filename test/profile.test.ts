@@ -7,7 +7,7 @@ import { profileTable } from "@/lib/profile/profile";
 import { classify } from "@/lib/profile/queries";
 import type { TableProfile } from "@/lib/profile/types";
 import type { LoadedTable } from "@/lib/duckdb/load";
-import { CSV_FIXTURE, PII_LITERALS } from "./fixtures";
+import { CSV_FIXTURE, PII_LITERALS, NON_ASCII_LITERALS } from "./fixtures";
 
 let conn: TestConn;
 let profile: TableProfile;
@@ -38,7 +38,7 @@ beforeAll(async () => {
     table: "data",
     label: "fixture.csv",
     format: "csv",
-    rowCount: 6,
+    rowCount: 9,
     columns: described,
     bytes: CSV_FIXTURE.length,
   };
@@ -67,7 +67,7 @@ describe("classify", () => {
 
 describe("profileTable", () => {
   it("counts rows and columns", () => {
-    expect(profile.rowCount).toBe(6);
+    expect(profile.rowCount).toBe(9);
     expect(profile.columnCount).toBe(8);
   });
 
@@ -92,7 +92,7 @@ describe("profileTable", () => {
   it("counts booleans", () => {
     const active = column("active");
     expect(active.class).toBe("boolean");
-    expect(active.boolean).toEqual({ trueCount: 4, falseCount: 2 });
+    expect(active.boolean).toEqual({ trueCount: 6, falseCount: 3 });
   });
 
   it("measures null and empty separately", () => {
@@ -171,6 +171,20 @@ describe("the metadata-only guarantee", () => {
     const serialized = JSON.stringify(profile);
     for (const literal of PII_LITERALS) {
       expect(serialized, `leaked ${literal}`).not.toContain(literal);
+    }
+  });
+
+  it("leaks no non-ASCII value, which the ASCII-only mask used to pass through", () => {
+    // Regression: [a-z]/[A-Z]/[0-9] are ASCII-only in RE2, so a Japanese or
+    // Cyrillic name was masked to itself and sent verbatim. Every PII fixture
+    // was ASCII, so the whole suite went green while the guarantee was broken.
+    const serialized = JSON.stringify(profile);
+    for (const literal of NON_ASCII_LITERALS) {
+      expect(serialized, `leaked ${literal}`).not.toContain(literal);
+    }
+    // Individual characters too, not just whole names.
+    for (const ch of ["田", "中", "И", "в", "é", "ü", "Ε", "ب"]) {
+      expect(serialized, `leaked character ${ch}`).not.toContain(ch);
     }
   });
 

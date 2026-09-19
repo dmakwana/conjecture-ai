@@ -181,9 +181,16 @@ export function shapeQuery(
   limit = 8,
 ): string {
   const c = quoteIdent(col.name);
+  // Unicode-aware, and deliberately so. `[a-z]`/`[A-Z]`/`[0-9]` are ASCII-only
+  // in RE2, so a Japanese or Cyrillic name passed through the old mask entirely
+  // untouched and was sent verbatim. Order matters here: numbers first, then
+  // cased letters in either script, then anything non-ASCII that is left, which
+  // is caseless letters (CJK, Arabic, Hebrew) and non-ASCII symbols. A trailing
+  // \p{L} pass would instead re-mask the A's this just produced.
   const masked =
-    `regexp_replace(regexp_replace(regexp_replace(` +
-    `substr(${c}, 1, 40), '[a-z]', 'a', 'g'), '[A-Z]', 'A', 'g'), '[0-9]', '9', 'g')`;
+    `regexp_replace(regexp_replace(regexp_replace(regexp_replace(` +
+    `substr(${c}, 1, 40), '\\p{N}', '9', 'g'), '\\p{Lu}', 'A', 'g'), ` +
+    `'\\p{Ll}', 'a', 'g'), '[^[:ascii:]]', 'a', 'g')`;
   return (
     `SELECT shape, count(*) AS n FROM (` +
     `SELECT ${masked} AS shape FROM (` +

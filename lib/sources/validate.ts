@@ -76,6 +76,42 @@ export function formatBytes(n: number | null): string {
 }
 
 /**
+ * Read only the first kilobyte of a response, then hang up.
+ *
+ * A server that ignores `Range` answers 200 with the whole file, and
+ * `res.arrayBuffer()` would pull all of it just to sniff the first few bytes,
+ * before fetchWithProgress downloads it a second time. On a 500 MB CSV that is
+ * two full transfers, the first of them invisible.
+ */
+async function readHead(res: Response, bytes = 1024): Promise<Uint8Array> {
+  if (!res.body) return new Uint8Array(await res.arrayBuffer());
+
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let read = 0;
+  try {
+    while (read < bytes) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      read += value.byteLength;
+    }
+  } finally {
+    // Stops the transfer rather than letting the rest stream in unread.
+    await reader.cancel().catch(() => {});
+  }
+
+  const out = new Uint8Array(Math.min(read, bytes));
+  let offset = 0;
+  for (const chunk of chunks) {
+    if (offset >= out.length) break;
+    out.set(chunk.subarray(0, out.length - offset), offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
+/**
  * Preflight a data URL before we try to load it.
  *
  * Uses a ranged GET rather than HEAD: many object stores reject HEAD under CORS,
@@ -224,7 +260,7 @@ export async function validateSource(rawUrl: string): Promise<ValidationReport> 
     });
   }
 
-  const head = new Uint8Array(await res.arrayBuffer());
+  const head = await readHead(res);
   const sniffed = sniffFormat(head);
   const declared = formatFromExtension(url.pathname);
   const format = sniffed ?? declared;

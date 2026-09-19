@@ -283,12 +283,14 @@ export default function Page() {
           });
         }
 
-        if (rejected.length > 0) {
-          setError(
-            `Not Parquet, CSV or JSON, so skipped: ${rejected.join(", ")}.`,
-          );
-        }
+        // Held back until after rebuild(), whose first act is setError(null);
+        // set here it would be wiped before anyone could read it.
+        const skipped =
+          rejected.length > 0
+            ? `Not Parquet, CSV or JSON, so skipped: ${rejected.join(", ")}.`
+            : null;
         if (next.length === sources.length) {
+          if (skipped) setError(skipped);
           setPhase(sources.length > 0 ? "ready" : "idle");
           setStatus("");
           return;
@@ -296,6 +298,7 @@ export default function Page() {
         clearDerived();
         setSources(next);
         await rebuild(next);
+        if (skipped) setError(skipped);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setPhase(sources.length > 0 ? "ready" : "idle");
@@ -310,7 +313,15 @@ export default function Page() {
       const next = sources.filter((s) => s.id !== id);
       setSources(next);
       setLoadedDemo(null);
-      await rebuild(next);
+      try {
+        await rebuild(next);
+      } catch (err) {
+        // rebuild leaves the phase on "rebuilding", so without this a failed
+        // remove strands every control disabled behind a stale status line.
+        setError(err instanceof Error ? err.message : String(err));
+        setPhase(next.length > 0 ? "ready" : "idle");
+        setStatus("");
+      }
     },
     [sources, rebuild],
   );

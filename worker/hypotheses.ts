@@ -8,7 +8,7 @@ import {
   type Hypothesis,
 } from "@/lib/hypotheses/schema";
 import type { PriorRound } from "@/lib/hypotheses/findings";
-import { SYSTEM_PROMPT, buildFollowUpMessage, buildUserMessage, MAX_ROUNDS } from "./prompt";
+import { systemPromptFor, buildFollowUpMessage, buildUserMessage, MAX_ROUNDS } from "./prompt";
 
 export const MODEL = "claude-opus-5";
 export const MAX_TOKENS = 16_000;
@@ -37,7 +37,9 @@ export async function generateHypotheses(
   priorRounds: PriorRound[] = [],
 ): Promise<{ hypotheses: Hypothesis[]; exchange: Omit<Exchange, "httpAttempts"> }> {
   const round = priorRounds.length + 1;
-  const system = SYSTEM_PROMPT;
+  // Round 1 gets the extra guidance about diagnostic hypotheses; later rounds
+  // must not, since it tells them they are round 1.
+  const system = systemPromptFor(round);
   // Round 1 sees the profile; later rounds also see what their predecessors
   // found, which is the whole point of iterating.
   const userMessage =

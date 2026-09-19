@@ -21,13 +21,25 @@ import { TableProfileSchema, type TableProfile } from "./types";
 const MAX_SHAPE_LENGTH = 60;
 
 /**
- * After masking, the only letters that may appear are `a` and `A` and the only
- * digit is `9`. Run-length counts written by collapseShape (`a{7}`) are stripped
- * before the check, since their digits are structural rather than data.
+ * What a masked shape is allowed to contain, as an allowlist rather than a
+ * denylist.
+ *
+ * The previous check looked for `[b-zB-Z0-8]`, which only catches ASCII, so
+ * every non-ASCII value sailed past it. Inverting this is the point: anything
+ * the mask failed to handle now fails the check instead of shipping. The
+ * permitted set is the three mask symbols plus ASCII punctuation and space,
+ * which stays literal because it is what makes a shape useful for spotting
+ * format drift.
  */
+const ALLOWED_SHAPE_CHAR =
+  /^[aA9\x20-\x2F\x3A-\x40\x5B-\x60\x7B-\x7E]*$/;
+
 function unmaskedCharacters(shape: string): string[] {
+  // Run-length counts written by collapseShape (`a{7}`) are structural.
   const residue = shape.replace(/\{\d+\}/g, "");
-  return residue.match(/[b-zB-Z0-8]/g) ?? [];
+  return ALLOWED_SHAPE_CHAR.test(residue)
+    ? []
+    : [...residue].filter((ch) => !ALLOWED_SHAPE_CHAR.test(ch));
 }
 
 export class RedactionError extends Error {}

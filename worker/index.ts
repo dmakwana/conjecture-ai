@@ -66,14 +66,22 @@ app.post("/api/hypotheses", async (c) => {
     return c.json({ error: "ANTHROPIC_API_KEY is not configured on the server." }, 500);
   }
 
-  const declaredLength = Number(c.req.header("content-length") ?? 0);
-  if (declaredLength > MAX_BODY_BYTES) {
+  // Read the body first and measure what actually arrived. Trusting
+  // content-length meant a request that simply omitted the header skipped the
+  // size check entirely.
+  let raw: string;
+  try {
+    raw = await c.req.text();
+  } catch {
+    return c.json({ error: "Body must be JSON." }, 400);
+  }
+  if (raw.length > MAX_BODY_BYTES) {
     return c.json({ error: "Profile too large." }, 413);
   }
 
   let body: unknown;
   try {
-    body = await c.req.json();
+    body = JSON.parse(raw);
   } catch {
     return c.json({ error: "Body must be JSON." }, 400);
   }

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createTestDb } from "./helpers/duckdb";
 import { rebuildDatabase } from "@/lib/duckdb/load";
 import { encode } from "./helpers/load";
-import { CSV_FIXTURE } from "./fixtures";
+import { CSV_FIXTURE, CSV_FIXTURE_ROWS } from "./fixtures";
 
 const SECOND_DATASET = `sku,price,in_stock
 A-1,9.99,true
@@ -23,7 +23,7 @@ describe("rebuilding across loads", () => {
     const db = testDb.db as any;
 
     const one = await rebuildDatabase(db, [first]);
-    expect(one.tables[0].rowCount).toBe(6);
+    expect(one.tables[0].rowCount).toBe(CSV_FIXTURE_ROWS);
     expect(one.externalAccessDisabled).toBe(true);
 
     const two = await rebuildDatabase(db, [first, second]);
@@ -64,17 +64,17 @@ describe("rebuilding across loads", () => {
     const b = { table: "b", label: "b.csv", format: "csv" as const, bytes: encode(SECOND_DATASET) };
 
     await rebuildDatabase(db, [a]);
-    expect(a.bytes.byteLength, "first source was detached").toBe(CSV_FIXTURE.length);
+    expect(a.bytes.byteLength, "first source was detached").toBe(encode(CSV_FIXTURE).byteLength);
 
     // Add a second while the first is loaded, the reported failure.
     await rebuildDatabase(db, [a, b]);
-    expect(a.bytes.byteLength).toBe(CSV_FIXTURE.length);
-    expect(b.bytes.byteLength).toBe(SECOND_DATASET.length);
+    expect(a.bytes.byteLength).toBe(encode(CSV_FIXTURE).byteLength);
+    expect(b.bytes.byteLength).toBe(encode(SECOND_DATASET).byteLength);
 
     // And repeatedly, since a session adds and removes many times.
     for (let i = 0; i < 3; i++) {
       const out = await rebuildDatabase(db, [a, b]);
-      expect(out.tables.map((t) => t.rowCount)).toEqual([6, 3]);
+      expect(out.tables.map((t) => t.rowCount)).toEqual([CSV_FIXTURE_ROWS, 3]);
     }
   }, 180_000);
 

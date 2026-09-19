@@ -10,13 +10,24 @@ describe("published transcript", () => {
     expect(pages.length).toBeGreaterThan(0);
   });
 
-  it("is linked from the app, by a path that works in dev as well", () => {
-    // It is a static export under public/, not a Next route, so it is reachable
-    // only if something points at it. The explicit index.html matters:
-    // `next dev` serves files from public/ but not directory indexes, so
-    // "/claude-code-transcript/" 404s locally while working in production.
-    const page = readFileSync("app/page.tsx", "utf8");
-    expect(page).toContain('href="/claude-code-transcript/index.html"');
+  it("links to a path that works in dev, whenever it links at all", () => {
+    // The link is currently commented out (1f5844b), which is a product choice,
+    // so this does not demand one. What it does guard is the hazard: if a link
+    // is present it must carry the explicit index.html, because `next dev`
+    // serves files from public/ but not directory indexes, so the bare
+    // directory URL 404s locally while working in production.
+    //
+    // Comments are stripped first. The earlier version grepped raw source and
+    // so passed even with the link commented out: a guard blind to the very
+    // thing it guarded.
+    const live = readFileSync("app/page.tsx", "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+
+    const links = live.match(/href="\/claude-code-transcript[^"]*"/g) ?? [];
+    for (const link of links) {
+      expect(link, "bare directory URL 404s under next dev").toContain("index.html");
+    }
   });
 
   it("links every page it claims to have", () => {

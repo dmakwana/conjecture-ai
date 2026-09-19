@@ -16,22 +16,34 @@ import type { Check, Hypothesis, HypothesisResult } from "./schema";
  * and is the reason this module is not three lines long.
  */
 
+/** Longest a sanitised note may be. Anything longer is a sign of leakage. */
+const MAX_NOTE_LENGTH = 120;
+
 export const OUTCOMES = ["holds", "falsified", "not_run"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
+/**
+ * Bounded deliberately. These fields are echoed into the prompt verbatim, and
+ * unbounded strings with no cap on the array turned the endpoint into a
+ * general-purpose prompt channel for anyone past Access, which is exactly what
+ * the Worker owning the system prompt is supposed to prevent.
+ */
+export const MAX_TITLE_LENGTH = 300;
+export const MAX_FINDINGS_PER_ROUND = 40;
+
 export const FindingSchema = z.object({
-  title: z.string(),
+  title: z.string().max(MAX_TITLE_LENGTH),
   check: z.unknown(),
   outcome: z.enum(OUTCOMES),
   violations: z.number().nullable(),
   pct: z.number().nullable(),
   rowCount: z.number().nullable(),
-  note: z.string().nullable(),
+  note: z.string().max(MAX_NOTE_LENGTH).nullable(),
 });
 
 export const PriorRoundSchema = z.object({
-  round: z.number(),
-  findings: z.array(FindingSchema),
+  round: z.number().int().min(1).max(10),
+  findings: z.array(FindingSchema).max(MAX_FINDINGS_PER_ROUND),
 });
 
 export type PriorRound = z.infer<typeof PriorRoundSchema>;
@@ -45,9 +57,6 @@ export interface Finding {
   rowCount: number | null;
   note: string | null;
 }
-
-/** Longest a sanitised note may be. Anything longer is a sign of leakage. */
-const MAX_NOTE_LENGTH = 120;
 
 /**
  * Reduce an error message to a category plus identifiers the model already has.

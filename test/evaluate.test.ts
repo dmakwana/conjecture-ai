@@ -6,7 +6,7 @@ import {
 import type { Check, Hypothesis } from "@/lib/hypotheses/schema";
 import { collapseShape } from "@/lib/profile/shapes";
 import { loadSources, encode } from "./helpers/load";
-import { CSV_FIXTURE } from "./fixtures";
+import { CSV_FIXTURE, CSV_FIXTURE_ROWS } from "./fixtures";
 
 /** Two related tables, so containment can be tested in both directions. */
 const ORDERS = `order_id,customer_id,total
@@ -62,7 +62,7 @@ describe("row predicates", () => {
     expect(r.status).toBe("falsified");
     if (r.status !== "falsified") throw new Error("unreachable");
     expect(r.violations).toBe(1);
-    expect(r.pct).toBeCloseTo(100 / 6, 1);
+    expect(r.pct).toBeCloseTo(100 / CSV_FIXTURE_ROWS, 1);
     expect(r.ms).toBeGreaterThanOrEqual(0);
     expect(r.sql).toContain("FROM data");
   });

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateHypotheses, MAX_ROUNDS, MODEL } from "@/worker/hypotheses";
 import app from "@/worker/index";
+import { buildFollowUpMessage } from "@/worker/prompt";
 import type { DatabaseProfile } from "@/lib/profile/types";
 import type { PriorRound } from "@/lib/hypotheses/findings";
 import { PII_LITERALS } from "./fixtures";
@@ -65,6 +66,29 @@ describe("iterative rounds", () => {
     // This is what should make round 1 choose diagnostic hypotheses.
     expect(system).toMatch(/ROUND 1 OF UP TO/);
     expect(system).toMatch(/DIAGNOSTIC/);
+  });
+
+  it("does not tell round 2 that it is round 1", async () => {
+    // The system prompt used to be a constant carrying round-1 instructions,
+    // so round 2 was told "THIS IS ROUND 1" by the system and "round 2" by the
+    // user message, with contradictory guidance attached.
+    const one = recordingClient();
+    await generateHypotheses(one.client, profile, []);
+    expect(String(one.requests[0].body.system)).toMatch(/ROUND 1 OF UP TO/);
+
+    const two = recordingClient();
+    await generateHypotheses(two.client, profile, [priorRound()]);
+    const system = String(two.requests[0].body.system);
+    expect(system).not.toMatch(/ROUND 1 OF UP TO/);
+    expect(system).not.toMatch(/Write round 1 knowing that/);
+  });
+
+  it("keeps the paragraph breaks in a follow-up message", () => {
+    // A filter meant for one conditional line was stripping every blank line,
+    // gluing the history, instructions and profile into one block.
+    const message = buildFollowUpMessage(profile, [priorRound()]);
+    expect(message).toContain("\n\n");
+    expect(message.split("\n\n").length).toBeGreaterThan(4);
   });
 
   it("sends prior verdicts on a follow-up, and says which round it is", async () => {

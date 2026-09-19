@@ -76,7 +76,13 @@ export function SqlConsole({
   loaded: LoadedDatabase;
   ranQueries: RanQuery[];
 }) {
-  const [text, setText] = useState(() => buildInitialSql(loaded, ranQueries));
+  // Seeded on first open rather than at mount. The console is mounted as soon
+  // as data loads, which is before any round has run, so seeding at mount
+  // always captured an empty ranQueries and the commented-out checks the
+  // feature exists for never appeared. Adjusted during render rather than in an
+  // effect, and only while still null, so a query already typed is never lost.
+  const [text, setText] = useState<string | null>(null);
+  if (open && text === null) setText(buildInitialSql(loaded, ranQueries));
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +124,7 @@ export function SqlConsole({
     const statement =
       selection && selection.trim() !== ""
         ? selection
-        : statementAt(text, view?.state.selection.main.head ?? text.length);
+        : statementAt(text ?? "", view?.state.selection.main.head ?? (text ?? "").length);
 
     if (!statement) {
       setError("Nothing to run: the editor holds only comments.");
@@ -132,8 +138,11 @@ export function SqlConsole({
     const started = performance.now();
     // A fresh connection per run: rebuildDatabase re-opens the database when
     // sources change, which invalidates anything held across that.
-    const conn = await db.connect();
+    // Inside the try: a rejected connect would otherwise skip the finally and
+    // leave the button stuck showing "Running" with no way back.
+    let conn: Awaited<ReturnType<typeof db.connect>> | null = null;
     try {
+      conn = await db.connect();
       const table = await conn.query(statement);
       setOutcome({
         table,
@@ -147,7 +156,7 @@ export function SqlConsole({
       setError(err instanceof Error ? err.message : String(err));
       setOutcome(null);
     } finally {
-      await conn.close();
+      await conn?.close();
       setRunning(false);
     }
   }, [getDb, running, text]);
@@ -188,7 +197,7 @@ export function SqlConsole({
         }}
       >
         <CodeMirror
-          value={text}
+          value={text ?? ""}
           onChange={setText}
           onCreateEditor={(view) => {
             viewRef.current = view;

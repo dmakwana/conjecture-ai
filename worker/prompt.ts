@@ -4,7 +4,7 @@ import type { PriorRound } from "@/lib/hypotheses/findings";
 /** Round 1 plus at most two follow-ups. */
 export const MAX_ROUNDS = 3;
 
-export const SYSTEM_PROMPT = `You are a data quality analyst. You are given statistical profiles of one or more tables and you propose falsifiable hypotheses about them.
+export const SYSTEM_PROMPT_BASE = `You are a data quality analyst. You are given statistical profiles of one or more tables and you propose falsifiable hypotheses about them.
 
 You never see the data. You see only structural statistics: row and null counts, distinct-value estimates, numeric ranges and quantiles, date ranges, string length and character-class distributions, and masked format shapes in which every letter is written as "a" or "A" and every digit as "9" (so "ana@acme.io" appears as "aaa@aaaa.aa", and "a{7}9{4}" means seven letters followed by four digits). Reason from those statistics. Never ask for values.
 
@@ -53,9 +53,14 @@ For kind = "unique", list the columns that together should have no duplicates in
 
 For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order. Both sides must have the SAME type family: number to number, text to text, date to date. You have every column's type, so check before proposing: a key stored as BIGINT in one table and VARCHAR in another cannot be compared meaningfully, and the check will be refused rather than guessed at. That mismatch is itself worth reporting as a row_predicate about the column whose type is wrong.
 
-Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.
+Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.`;
 
-THIS IS ROUND 1 OF UP TO ${MAX_ROUNDS}
+/**
+ * Appended only to round 1. Sent on every round it told the model "THIS IS
+ * ROUND 1" while the user message said round 2, along with instructions that
+ * contradict the follow-up ones.
+ */
+export const ROUND_ONE_GUIDANCE = `THIS IS ROUND 1 OF UP TO ${MAX_ROUNDS}
 
 Every hypothesis you propose will be run against the data, and you may then be given the verdicts (holds, falsified with a violation count, or not run) and asked what follows. Nothing else comes back: no rows, no values, only counts and percentages.
 
@@ -158,7 +163,7 @@ export function buildFollowUpMessage(
       : `Concentrate on explaining the ${falsified.length} falsified result${falsified.length === 1 ? "" : "s"}.`,
     notRun.length > 0
       ? `${notRun.length} check${notRun.length === 1 ? "" : "s"} did not run; repair only the ones still worth asking.`
-      : ``,
+      : null,
     ``,
     `Do not repeat a hypothesis that already ran. Propose between 6 and 12.`,
     ``,
@@ -167,6 +172,14 @@ export function buildFollowUpMessage(
     JSON.stringify(profile, null, 1),
     "```",
   ]
-    .filter((line) => line !== "")
+    // Drop only the conditional line above when it is absent. Filtering on ""
+    // also removed every deliberate blank line, gluing the verdict history, the
+    // instructions and the profile into one unbroken block.
+    .filter((line): line is string => line !== null)
     .join("\n");
+}
+
+/** The system prompt for a given round. */
+export function systemPromptFor(round: number): string {
+  return round === 1 ? `${SYSTEM_PROMPT_BASE}\n${ROUND_ONE_GUIDANCE}` : SYSTEM_PROMPT_BASE;
 }
