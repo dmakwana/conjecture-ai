@@ -6,6 +6,15 @@
 }
 
 :root {
+  /*
+   * Scrollbars, form controls and the dialog backdrop are painted by the
+   * browser, not by us, and it paints them light unless the page says which
+   * schemes it supports. Swapping the variables below is invisible to it.
+   * `color-scheme` is inherited, so this one declaration covers the modal and
+   * the editor as well.
+   */
+  color-scheme: light dark;
+
   --bg: #fbfbfa;
   --panel: #ffffff;
   --border: #e4e4e2;

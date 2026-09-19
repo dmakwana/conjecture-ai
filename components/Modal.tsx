@@ -52,7 +52,14 @@ export function Modal({
           <IconClose className="w-4 h-4" />
         </button>
       </div>
-      <div className="px-5 py-4 overflow-auto max-h-[calc(85vh-4.5rem)]">{children}</div>
+      {/*
+        * Mount contents only while open. A closed <dialog> is display:none, and
+        * anything that measures itself on mount, CodeMirror included, reads a
+        * zero-width viewport there and comes back mis-scrolled when shown.
+        */}
+      <div className="px-5 py-4 overflow-auto max-h-[calc(85vh-4.5rem)]">
+        {open && children}
+      </div>
     </dialog>
   );
 }

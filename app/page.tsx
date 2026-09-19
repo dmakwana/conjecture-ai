@@ -444,9 +444,11 @@ export default function Page() {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">conjecture-ai</h1>
         <p className="muted text-sm mt-1">
-          Profile your data, then test falsifiable hypotheses about it. Everything runs
-          entirely in your browser: nothing is uploaded, and your data never leaves this
-          page.
+          Quickly understand and inspect any dataset!
+          Conjecture loads your dataset of choice and automatically generate & executes
+          falsifiable invariant hypotheses around the data, without the data ever leaving
+          your system. Dig deeper with subsequent rounds of invariant checks.
+          All within the browser. Formats supported: parquet, csv, json.
         </p>
       </header>
 
