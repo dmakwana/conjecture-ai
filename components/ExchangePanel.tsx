@@ -10,10 +10,15 @@ type Tab = "request" | "response";
  * one response per run, and `httpAttempts` is measured in the Worker rather
  * than assumed, so the count shown here is the real one.
  */
-export function ExchangePanel({ exchange }: { exchange: Exchange }) {
+export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("response");
+  const [round, setRound] = useState(0);
 
+  // Default to the newest round whenever one arrives.
+  const index = Math.min(round, exchanges.length - 1);
+  const exchange = exchanges[index];
+  const totalAttempts = exchanges.reduce((n, e) => n + e.httpAttempts, 0);
   const retried = exchange.httpAttempts > 1;
 
   return (
@@ -22,11 +27,10 @@ export function ExchangePanel({ exchange }: { exchange: Exchange }) {
         <div className="text-sm">
           <span className="font-medium">Transcript</span>
           <span className="muted ml-2">
-            {exchange.httpAttempts} request{exchange.httpAttempts === 1 ? "" : "s"} ·{" "}
-            1 response · {exchange.model} ·{" "}
-            {exchange.inputTokens.toLocaleString()} in /{" "}
-            {exchange.outputTokens.toLocaleString()} out ·{" "}
-            {(exchange.latencyMs / 1000).toFixed(1)}s
+            {exchanges.length} round{exchanges.length === 1 ? "" : "s"} ·{" "}
+            {totalAttempts} request{totalAttempts === 1 ? "" : "s"} ·{" "}
+            {exchanges.length} response{exchanges.length === 1 ? "" : "s"} ·{" "}
+            {exchange.model}
           </span>
         </div>
         <button
@@ -46,6 +50,31 @@ export function ExchangePanel({ exchange }: { exchange: Exchange }) {
 
       {open && (
         <div className="border-t hairline">
+          {exchanges.length > 1 && (
+            <div className="flex gap-1 px-4 pt-3 text-sm items-baseline">
+              <span className="muted text-xs mr-1">round</span>
+              {exchanges.map((e, i) => (
+                <button
+                  key={e.round}
+                  onClick={() => setRound(i)}
+                  className={`px-2 py-0.5 rounded text-xs ${
+                    i === index ? "panel font-medium" : "muted"
+                  }`}
+                >
+                  {e.round}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p className="muted text-xs px-4 pt-2">
+            Round {exchange.round} · {exchange.inputTokens.toLocaleString()} in /{" "}
+            {exchange.outputTokens.toLocaleString()} out ·{" "}
+            {(exchange.latencyMs / 1000).toFixed(1)}s ·{" "}
+            {exchange.httpAttempts} HTTP request
+            {exchange.httpAttempts === 1 ? "" : "s"}
+          </p>
+
           <div className="flex gap-1 px-4 pt-3 text-sm">
             {(["request", "response"] as Tab[]).map((t) => (
               <button
@@ -64,9 +93,10 @@ export function ExchangePanel({ exchange }: { exchange: Exchange }) {
             {tab === "request" ? (
               <>
                 <p className="muted text-xs my-2">
-                  Sent verbatim. The profile below is the only data in it — no cell
-                  values, and no tools are declared, so the model cannot ask for a
-                  second turn.
+                  Sent verbatim. No cell values, and no tools are declared, so the model
+                  cannot ask for a second turn.
+                  {exchange.round > 1 &&
+                    " Earlier rounds' verdicts are included as counts and percentages only."}
                 </p>
                 <Block label="system" body={exchange.system} />
                 <Block label="user" body={exchange.userMessage} />

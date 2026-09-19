@@ -1,14 +1,18 @@
 # duck-invariant
 
-Point it at a dataset, and it proposes **falsifiable hypotheses** about the data — then tests
-each one locally and tells you which ones are false.
+Point it at one or more datasets, and it proposes **falsifiable hypotheses** about them — then
+tests each one locally and tells you which ones are false. Feed the verdicts back and it narrows
+down *why*.
 
-Everything runs in the browser. DuckDB-WASM loads the file, profiles every column, and evaluates
-every check. The only thing that ever leaves the page is a statistical profile: counts,
-percentages, ranges, and masked format shapes. **No cell values are ever transmitted.**
+Everything runs in the browser. DuckDB-WASM loads the files, profiles every column, and evaluates
+every check. The only thing that ever leaves the page is a statistical profile — counts,
+percentages, ranges, and masked format shapes — and, on later rounds, the pass/fail counts of what
+has already been tested. **No cell values are ever transmitted.**
 
 ```
-URL or file → validate → load into DuckDB → profile → ask Claude for hypotheses → test locally
+URLs and files → validate → load into DuckDB → profile → ask the AI → test locally
+                                                            ▲            │
+                                                            └── verdicts ┘   (up to 3 rounds)
 ```
 
 ## Quick start
@@ -48,6 +52,41 @@ megabytes, and downloading that unasked would be rude on a metered connection.
 `test/demo.test.ts` asserts every manifest path exists on disk, stays under Cloudflare's 25 MiB
 per-file asset limit, and uses safe unique table names — a typo there would otherwise 404 at
 runtime with no other warning.
+
+## Iterative rounds
+
+One pass finds that something is broken. It takes another to work out what. So a run is up to
+**three rounds**: round 1 reads the profile, and each follow-up receives the verdicts of everything
+already tested and proposes what now follows.
+
+Round 1 is told this is coming, which changes what it asks. The system prompt tells it to include
+diagnostic hypotheses chosen because either answer is informative, to prefer one broad claim over
+five near-duplicates, and to leave narrowing for later. Follow-up rounds are told what to do with
+each kind of result: narrow a falsified claim by status, country, channel or time window; treat a
+near-100% violation rate as a wrong rule rather than bad data; build on what held; and repair or
+drop what did not run instead of resubmitting it.
+
+It works. A live two-round run over Commerce:
+
+| Round 1 found | Round 2 concluded |
+|---|---|
+| 100 orders reference a customer that does not exist | Those 100 are exactly the malformed short `customer_id`s — every value matches the shape `A{3}-9{7}` |
+| A composite `(product_id, seller_id, product_category)` check fails on 40 rows | `product_category` is the culprit: it mismatches on those 40 while `seller_id` **holds** |
+| 40 rows break lifecycle timestamp ordering | `created_at` is not the earliest timestamp (40); `delivered_at >= shipped_at` **holds** |
+
+Note the second round used the masked shape histogram — the privacy-preserving representation —
+to identify a root cause it could never have seen the values for.
+
+**What travels back is only what already travels out.** Each finding carries its title, the
+structured check, the outcome, and a violation count and percentage — aggregates of exactly the
+kind the profile already reports. No rows, no values, and not even the generated SQL.
+
+The one real hazard is error text: DuckDB embeds the offending value in its messages
+(`Could not convert string 'aaron.blake@acme.io' to DOUBLE`), so a raw reason would hand a cell
+value straight back. `lib/hypotheses/findings.ts` reduces every reason to a category plus
+identifiers the model already has, discarding all quoted text; `assertFindingsSafe()` refuses
+anything that still looks like engine prose, and `test/findings.test.ts` attacks it with real
+DuckDB messages containing PII.
 
 ## How the privacy guarantee works
 
@@ -149,15 +188,16 @@ domain. Without it, anyone who finds the URL can spend your API key.
 Note: Worker-level Access policies do not support WebSockets, which is one reason this app uses a
 single request/response rather than a streaming socket.
 
-## One query, one response — and you can read both
+## One request per round — and you can read every one
 
-Each run makes exactly **one** request to Claude and gets **one** response. There is no agent
+Each round makes exactly **one** request and gets **one** response. There is no agent
 loop, no tool use, and no retry-with-follow-up: the model is asked once for structured output and
 that is the entire exchange. No tools are declared in the request, so the model has no mechanism
 to ask for another turn even if it wanted one.
 
 That is measured rather than asserted. `worker/index.ts` wraps `fetch` in a counter and reports
-`httpAttempts` on every response, so the number shown in the UI is the real one. If it ever reads
+`httpAttempts` on every response, so the number shown in the UI is the real one. The transcript
+keeps every round, selectable by number. If it ever reads
 above 1, the SDK resent the same query after a transient failure — the UI says so explicitly
 rather than letting it look like an extra question. `test/exchange.test.ts` drives the Worker with
 a recording client and asserts one request, one user message, and no `tools` field.
@@ -209,8 +249,14 @@ it discoverable than any of the above will prevent. Enable Access and the point 
 
 ## Model
 
-`claude-sonnet-5`, hardcoded in the Worker along with the system prompt, output schema and token
-cap. The client sends only a profile, so the endpoint cannot be repurposed as a general-purpose
+`claude-opus-5`, hardcoded in the Worker along with the system prompt, output schema and token
+cap. Server-side refusal fallbacks are enabled, as Anthropic recommends by default for Opus 5: if
+a safety classifier declines, the API retries on a fallback model rather than returning nothing.
+
+Cost is worth knowing before you reach for round 3. Commerce sends ~39k input tokens per round and
+gets 7-9k back, so at Opus 5 rates that is roughly **$0.40 per round** — about $1.20 for a full
+three-round run, and 80-110s of latency each. Sonnet 5 is about a fifth of that if you would rather
+trade depth for cost; it is a one-line change in `worker/hypotheses.ts`. The client sends only a profile, so the endpoint cannot be repurposed as a general-purpose
 Claude proxy. Structured outputs (`messages.parse` + `zodOutputFormat`) guarantee the response
 matches the hypothesis schema.
 
@@ -220,7 +266,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-81 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+100 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 

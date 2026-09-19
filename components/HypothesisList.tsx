@@ -8,6 +8,8 @@ import { ViolationTable } from "./ViolationTable";
 import { Spinner } from "./Spinner";
 
 export interface HypothesisRow {
+  /** 1-based round that proposed this hypothesis. */
+  round: number;
   hypothesis: Hypothesis;
   /** null until this check has run. */
   result: HypothesisResult | null;
@@ -92,8 +94,59 @@ export function HypothesisList({
     }
   }
 
+  // Group by round so a follow-up reads as a continuation rather than a new
+  // unrelated list.
+  const rounds = [...new Set(rows.map((r) => r.round))].sort((a, b) => a - b);
+
   return (
-    <ul className="panel rounded-md divide-y hairline">
+    <div className="space-y-4">
+      {rounds.map((round) => (
+        <RoundSection
+          key={round}
+          round={round}
+          total={rounds.length}
+          rows={rows.filter((r) => r.round === round)}
+          openRows={openRows}
+          openSql={openSql}
+          preview={preview}
+          previewError={previewError}
+          onToggleRows={toggleRows}
+          onToggleSql={(id) => setOpenSql(openSql === id ? null : id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RoundSection({
+  round, total, rows, openRows, openSql, preview, previewError, onToggleRows, onToggleSql,
+}: {
+  round: number;
+  total: number;
+  rows: HypothesisRow[];
+  openRows: string | null;
+  openSql: string | null;
+  preview: ViolationPreview | null;
+  previewError: string | null;
+  onToggleRows: (h: Hypothesis) => void;
+  onToggleSql: (id: string) => void;
+}) {
+  const falsified = rows.filter((r) => r.result?.status === "falsified").length;
+  const tested = rows.filter((r) => r.result !== null).length;
+
+  return (
+    <section>
+      {total > 1 && (
+        <header className="flex items-baseline gap-3 mb-1.5">
+          <h2 className="text-sm font-medium">Round {round}</h2>
+          <span className="muted text-xs">
+            {round === 1 ? "from the profile" : "informed by earlier results"} ·{" "}
+            {tested} of {rows.length} tested
+            {falsified > 0 && ` · ${falsified} falsified`}
+          </span>
+        </header>
+      )}
+      <ul className="panel rounded-md divide-y hairline">
       {rows.map(({ hypothesis, result, running }) => {
         const cross = isCrossTable(hypothesis.check);
         return (
@@ -136,7 +189,7 @@ export function HypothesisList({
                         {result.rowCount.toLocaleString()} rows ({result.pct.toFixed(2)}%)
                       </span>
                       <button
-                        onClick={() => toggleRows(hypothesis)}
+                        onClick={() => onToggleRows(hypothesis)}
                         className="underline underline-offset-2 hover:no-underline"
                       >
                         {openRows === hypothesis.id ? "hide rows" : "view rows"}
@@ -153,9 +206,7 @@ export function HypothesisList({
                   )}
                   {result?.sql && (
                     <button
-                      onClick={() =>
-                        setOpenSql(openSql === hypothesis.id ? null : hypothesis.id)
-                      }
+                      onClick={() => onToggleSql(hypothesis.id)}
                       className="muted text-xs underline underline-offset-2 hover:no-underline"
                     >
                       {openSql === hypothesis.id ? "hide SQL" : "show SQL"}
@@ -192,6 +243,7 @@ export function HypothesisList({
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </section>
   );
 }

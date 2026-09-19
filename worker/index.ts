@@ -1,9 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Hono } from "hono";
+import { z } from "zod";
 import { cors } from "hono/cors";
 import { DatabaseProfileSchema } from "@/lib/profile/types";
+import { PriorRoundSchema } from "@/lib/hypotheses/findings";
 import {
   generateHypotheses,
+  MAX_ROUNDS,
   MODEL,
   RefusalError,
   UnusableResponseError,
@@ -22,7 +25,7 @@ interface Env {
  * cannot be repurposed as a general-purpose Claude proxy by anyone who gets
  * past Cloudflare Access.
  */
-const MAX_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -50,7 +53,12 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.get("/api/health", (c) =>
-  c.json({ ok: true, model: MODEL, hasKey: Boolean(c.env.ANTHROPIC_API_KEY) }),
+  c.json({
+    ok: true,
+    model: MODEL,
+    hasKey: Boolean(c.env.ANTHROPIC_API_KEY),
+    maxRounds: MAX_ROUNDS,
+  }),
 );
 
 app.post("/api/hypotheses", async (c) => {
@@ -81,6 +89,23 @@ app.post("/api/hypotheses", async (c) => {
   }
   const profile = parsed.data;
 
+  // Prior rounds are optional; round 1 sends none. Parsing strips unknown keys
+  // here too, so a client cannot widen what reaches the model.
+  const priorParsed = z
+    .array(PriorRoundSchema)
+    .safeParse((body as { priorRounds?: unknown })?.priorRounds ?? []);
+  if (!priorParsed.success) {
+    return c.json({ error: "Invalid priorRounds." }, 400);
+  }
+  const priorRounds = priorParsed.data;
+
+  if (priorRounds.length >= MAX_ROUNDS) {
+    return c.json(
+      { error: `Already at the maximum of ${MAX_ROUNDS} rounds.` },
+      400,
+    );
+  }
+
   // Count the HTTP requests actually made, so the transcript shown to the user
   // reports a measured number rather than a promise. One logical query should
   // mean one request; more than one means the SDK retried a transient failure.
@@ -96,7 +121,11 @@ app.post("/api/hypotheses", async (c) => {
   });
 
   try {
-    const { hypotheses, exchange } = await generateHypotheses(client, profile);
+    const { hypotheses, exchange } = await generateHypotheses(
+      client,
+      profile,
+      priorRounds,
+    );
 
     return c.json({
       hypotheses,

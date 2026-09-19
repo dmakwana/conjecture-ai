@@ -14,6 +14,11 @@ import {
   evaluateAllHypotheses, fetchViolationRows, schemaFrom, type Schema,
 } from "@/lib/hypotheses/evaluate";
 import { requestHypotheses } from "@/lib/api";
+import {
+  assertFindingsSafe, knownIdentifiers, toFinding,
+  type Finding, type PriorRound,
+} from "@/lib/hypotheses/findings";
+import { MAX_ROUNDS } from "@/worker/prompt";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { HypothesisList, type HypothesisRow } from "@/components/HypothesisList";
 import { ExchangePanel } from "@/components/ExchangePanel";
@@ -43,7 +48,8 @@ export default function Page() {
   const [loaded, setLoaded] = useState<LoadedDatabase | null>(null);
   const [profile, setProfile] = useState<DatabaseProfile | null>(null);
   const [rows, setRows] = useState<HypothesisRow[]>([]);
-  const [exchange, setExchange] = useState<Exchange | null>(null);
+  const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [priorRounds, setPriorRounds] = useState<PriorRound[]>([]);
 
   const dbRef = useRef<duckdb.AsyncDuckDB | null>(null);
   const connRef = useRef<duckdb.AsyncDuckDBConnection | null>(null);
@@ -69,7 +75,8 @@ export default function Page() {
   const rebuild = useCallback(async (next: Source[]) => {
     setError(null);
     setRows([]);
-    setExchange(null);
+    setExchanges([]);
+    setPriorRounds([]);
 
     if (next.length === 0) {
       setLoaded(null);
@@ -272,46 +279,78 @@ export default function Page() {
     [sources, rebuild],
   );
 
-  const findInvariants = useCallback(async () => {
+  /**
+   * Run one round. Round 1 sees only the profile; later rounds also receive the
+   * verdicts of everything already tested, so the model can narrow down what
+   * failed instead of guessing again from scratch.
+   */
+  const runRound = useCallback(async () => {
     if (!profile || !loaded || !schema || !dbRef.current) return;
+    if (priorRounds.length >= MAX_ROUNDS) return;
+
     setError(null);
-    setRows([]);
-    setExchange(null);
     setPhase("thinking");
     setStatus("");
 
-    try {
-      // One request, one response — see worker/hypotheses.ts.
-      const response = await requestHypotheses(profile);
-      setExchange(response.exchange);
+    const round = priorRounds.length + 1;
 
-      // Render every hypothesis immediately, then fill verdicts in as they land
-      // rather than making the user wait for the whole batch.
-      setRows(response.hypotheses.map((h) => ({ hypothesis: h, result: null, running: false })));
+    try {
+      // One request, one response per round — see worker/hypotheses.ts.
+      const response = await requestHypotheses(profile, priorRounds);
+      setExchanges((prev) => [...prev, response.exchange]);
+
+      // Ids are assigned per response, so round 2 would hand out h1 again and
+      // collide with round 1 — breaking React keys and result routing alike.
+      const hypotheses = response.hypotheses.map((h, i) => ({
+        ...h,
+        id: `r${round}h${i + 1}`,
+      }));
+
+      // Append rather than replace: earlier rounds stay visible, since a
+      // follow-up only makes sense read against what came before.
+      setRows((prev) => [
+        ...prev,
+        ...hypotheses.map((h) => ({
+          round, hypothesis: h, result: null, running: false,
+        })),
+      ]);
       setPhase("testing");
 
+      const known = knownIdentifiers(loaded.tables);
+      const findings: Finding[] = [];
+
       await evaluateAllHypotheses(
-        dbRef.current, response.hypotheses, schema, rowCounts,
+        dbRef.current, hypotheses, schema, rowCounts,
         {
           onStart: (id) =>
             setRows((prev) =>
               prev.map((r) => (r.hypothesis.id === id ? { ...r, running: true } : r)),
             ),
-          onResult: (id, result) =>
+          onResult: (id, result) => {
             setRows((prev) =>
               prev.map((r) =>
                 r.hypothesis.id === id ? { ...r, result, running: false } : r,
               ),
-            ),
+            );
+            const h = hypotheses.find((x) => x.id === id);
+            if (h) findings.push(toFinding(h, result, known));
+          },
         },
       );
+
+      // Assert before storing, not just before sending, so a leak surfaces here
+      // rather than one round later.
+      setPriorRounds((prev) => [
+        ...prev,
+        { round, findings: assertFindingsSafe(findings) as never },
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setPhase("ready");
       setStatus("");
     }
-  }, [profile, loaded, schema, rowCounts]);
+  }, [profile, loaded, schema, rowCounts, priorRounds]);
 
   const inspect = useCallback(
     async (h: Hypothesis) => {
@@ -397,16 +436,24 @@ export default function Page() {
 
           <div className="flex items-center gap-4 flex-wrap">
             <button
-              onClick={findInvariants}
-              disabled={busy}
+              onClick={runRound}
+              disabled={busy || priorRounds.length >= MAX_ROUNDS}
               className="rounded-md px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Find invariants
+              {priorRounds.length === 0
+                ? "Find invariants"
+                : `Dig deeper (round ${priorRounds.length + 1} of ${MAX_ROUNDS})`}
             </button>
 
             {phase === "thinking" && (
               <span className="text-sm text-blue-600 dark:text-blue-400">
-                <ThinkingDots label="AI is reading the profile…" />
+                <ThinkingDots
+                  label={
+                    priorRounds.length === 0
+                      ? "AI is reading the profile…"
+                      : "AI is reading the previous results…"
+                  }
+                />
               </span>
             )}
 
@@ -415,6 +462,12 @@ export default function Page() {
                 {tested} of {rows.length} tested
                 {falsified > 0 && ` · ${falsified} falsified`}
                 {sqlMs > 0 && ` · ${sqlMs} ms of SQL`}
+              </span>
+            )}
+
+            {priorRounds.length >= MAX_ROUNDS && (
+              <span className="muted text-xs">
+                {MAX_ROUNDS} rounds is the limit
               </span>
             )}
 
@@ -427,7 +480,7 @@ export default function Page() {
         </>
       )}
 
-      {exchange && <ExchangePanel exchange={exchange} />}
+      {exchanges.length > 0 && <ExchangePanel exchanges={exchanges} />}
 
       {rows.length > 0 && <HypothesisList rows={rows} onInspect={inspect} />}
     </main>

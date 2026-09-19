@@ -1,4 +1,8 @@
 import type { DatabaseProfile } from "@/lib/profile/types";
+import type { PriorRound } from "@/lib/hypotheses/findings";
+
+/** Round 1 plus at most two follow-ups. */
+export const MAX_ROUNDS = 3;
 
 export const SYSTEM_PROMPT = `You are a data quality analyst. You are given statistical profiles of one or more tables and you propose falsifiable hypotheses about them.
 
@@ -48,7 +52,17 @@ For kind = "unique", list the columns that together should have no duplicates in
 
 For kind = "references", set \`columns\` and \`referencesColumns\` to the same number of columns, in matching order.
 
-Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.`;
+Propose between 8 and 16 hypotheses, ordered with the most valuable first. Fewer good ones beat many obvious ones. When several tables are loaded, spend a real share of them on cross-table relationships.
+
+THIS IS ROUND 1 OF UP TO ${MAX_ROUNDS}
+
+Every hypothesis you propose will be run against the data, and you may then be given the verdicts — holds, falsified with a violation count, or not run — and asked what follows. Nothing else comes back: no rows, no values, only counts and percentages.
+
+Write round 1 knowing that. Concretely:
+
+  - Include a few DIAGNOSTIC hypotheses chosen because either answer teaches you something, not because you expect them to fail. If a column might be a key, or two tables might be related, testing it cheaply now tells you where to dig later.
+  - Do not try to cram every variation into round 1. One clean claim per idea beats five near-duplicates; if it fails you can narrow it next round.
+  - Prefer a broad claim over a narrow one when both are plausible. A broad claim that fails localises the problem for you; a narrow one that passes tells you almost nothing.`;
 
 /**
  * The profile is already metadata-only (see lib/profile/redaction.ts). This just
@@ -80,4 +94,78 @@ export function buildUserMessage(profile: DatabaseProfile): string {
       ? `Propose falsifiable hypotheses. Include cross-table relationships.`
       : `Propose falsifiable hypotheses about this table.`,
   ].join("\n");
+}
+
+/**
+ * The follow-up message for round 2 and beyond.
+ *
+ * Carries the verdicts and nothing else — see lib/hypotheses/findings.ts, which
+ * strips the engine's error prose because DuckDB embeds offending cell values
+ * in it. Counts and percentages are the same class of aggregate the profile
+ * already reports.
+ */
+export function buildFollowUpMessage(
+  profile: DatabaseProfile,
+  priorRounds: PriorRound[],
+): string {
+  const round = priorRounds.length + 1;
+
+  const describe = (f: PriorRound["findings"][number]): string => {
+    const check = f.check as { kind: string };
+    if (f.outcome === "holds") return `HELD        ${f.title}  [${check.kind}]`;
+    if (f.outcome === "not_run") return `NOT RUN     ${f.title}  — ${f.note ?? "unknown"}`;
+    const pct = f.pct === null ? "" : ` (${f.pct.toFixed(2)}%)`;
+    return `FALSIFIED   ${f.title}  — ${f.violations?.toLocaleString() ?? "?"} rows${pct}`;
+  };
+
+  const history = priorRounds
+    .map((r) => `Round ${r.round}:\n${r.findings.map((f) => "  " + describe(f)).join("\n")}`)
+    .join("\n\n");
+
+  const falsified = priorRounds.flatMap((r) =>
+    r.findings.filter((f) => f.outcome === "falsified"),
+  );
+  const notRun = priorRounds.flatMap((r) =>
+    r.findings.filter((f) => f.outcome === "not_run"),
+  );
+
+  return [
+    `This is round ${round} of up to ${MAX_ROUNDS}. Here is what happened to your earlier hypotheses.`,
+    ``,
+    history,
+    ``,
+    `The tables and columns are unchanged; the profile is repeated below for reference.`,
+    ``,
+    `Propose the hypotheses that NOW follow. What to do with each kind of result:`,
+    ``,
+    `  FALSIFIED — the interesting case. You know something is wrong but not what.`,
+    `    Narrow it: is the breakage confined to one status, one country, one`,
+    `    channel, one time window, one seller? Propose checks that would separate`,
+    `    those explanations. A violation rate near 100% usually means the rule was`,
+    `    wrong, not the data; a small rate usually means genuinely bad rows.`,
+    ``,
+    `  HELD — that avenue is clean, so do not re-test it. Ask what it implies. If`,
+    `    a key held, combinations built on it are now worth testing. If a total`,
+    `    reconciled, the inputs to that total are probably trustworthy and the`,
+    `    problem is elsewhere.`,
+    ``,
+    `  NOT RUN — the check never executed. Fix it or drop it; do not resubmit it`,
+    `    unchanged. The note says what went wrong.`,
+    ``,
+    falsified.length === 0
+      ? `Nothing was falsified, so go deeper rather than wider: the easy invariants hold, and the remaining defects are in the relationships the first round did not reach.`
+      : `Concentrate on explaining the ${falsified.length} falsified result${falsified.length === 1 ? "" : "s"}.`,
+    notRun.length > 0
+      ? `${notRun.length} check${notRun.length === 1 ? "" : "s"} did not run; repair only the ones still worth asking.`
+      : ``,
+    ``,
+    `Do not repeat a hypothesis that already ran. Propose between 6 and 12.`,
+    ``,
+    `Profile:`,
+    "```json",
+    JSON.stringify(profile, null, 1),
+    "```",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 }

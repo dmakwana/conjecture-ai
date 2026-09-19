@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { DatabaseProfile } from "@/lib/profile/types";
 import {
   WireHypothesesSchema,
@@ -7,10 +7,20 @@ import {
   type Exchange,
   type Hypothesis,
 } from "@/lib/hypotheses/schema";
-import { SYSTEM_PROMPT, buildUserMessage } from "./prompt";
+import type { PriorRound } from "@/lib/hypotheses/findings";
+import { SYSTEM_PROMPT, buildFollowUpMessage, buildUserMessage, MAX_ROUNDS } from "./prompt";
 
-export const MODEL = "claude-sonnet-5";
+export const MODEL = "claude-opus-5";
 export const MAX_TOKENS = 16_000;
+
+/**
+ * Server-side refusal fallbacks, which Anthropic recommends enabling by default
+ * for Opus 5. If a safety classifier declines the request, the API retries on a
+ * fallback model by refusal category instead of handing us an empty result.
+ */
+const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+
+export { MAX_ROUNDS };
 
 export class RefusalError extends Error {}
 export class UnusableResponseError extends Error {}
@@ -24,17 +34,26 @@ export class UnusableResponseError extends Error {}
 export async function generateHypotheses(
   client: Anthropic,
   profile: DatabaseProfile,
+  priorRounds: PriorRound[] = [],
 ): Promise<{ hypotheses: Hypothesis[]; exchange: Omit<Exchange, "httpAttempts"> }> {
+  const round = priorRounds.length + 1;
   const system = SYSTEM_PROMPT;
-  const userMessage = buildUserMessage(profile);
+  // Round 1 sees the profile; later rounds also see what their predecessors
+  // found, which is the whole point of iterating.
+  const userMessage =
+    priorRounds.length === 0
+      ? buildUserMessage(profile)
+      : buildFollowUpMessage(profile, priorRounds);
   const started = Date.now();
 
-  const response = await client.messages.parse({
+  const response = await client.beta.messages.parse({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system,
     messages: [{ role: "user", content: userMessage }],
-    output_config: { format: zodOutputFormat(WireHypothesesSchema) },
+    output_config: { format: betaZodOutputFormat(WireHypothesesSchema) },
+    betas: [FALLBACK_BETA],
+    fallbacks: "default",
   });
 
   const latencyMs = Date.now() - started;
@@ -60,6 +79,7 @@ export async function generateHypotheses(
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       hypothesesReturned: response.parsed_output.hypotheses.length,
+      round,
     },
   };
 }

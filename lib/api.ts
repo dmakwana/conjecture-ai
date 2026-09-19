@@ -1,5 +1,6 @@
 import type { DatabaseProfile } from "@/lib/profile/types";
 import type { Exchange, Hypothesis } from "@/lib/hypotheses/schema";
+import { assertFindingsSafe, type PriorRound } from "@/lib/hypotheses/findings";
 
 /**
  * In development the static site (:3000) and the Worker (:8787) are separate
@@ -15,12 +16,16 @@ export interface HypothesesResponse {
 
 export async function requestHypotheses(
   profile: DatabaseProfile,
+  priorRounds: PriorRound[] = [],
   signal?: AbortSignal,
 ): Promise<HypothesesResponse> {
+  // Nothing leaves without passing the leak check, exactly as the profile does.
+  for (const round of priorRounds) assertFindingsSafe(round.findings as never);
+
   const res = await fetch(`${API_BASE}/api/hypotheses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ profile }),
+    body: JSON.stringify({ profile, priorRounds }),
     signal,
   });
 

@@ -193,4 +193,6 @@ export interface Exchange {
   httpAttempts: number;
   /** Hypotheses returned before any were dropped as malformed. */
   hypothesesReturned: number;
+  /** 1-based round this exchange belongs to. */
+  round: number;
 }

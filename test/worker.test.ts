@@ -29,7 +29,7 @@ describe("worker routes", () => {
     const res = await app.request("/api/health", {}, { ...ENV, ANTHROPIC_API_KEY: "sk-secret" });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ ok: true, model: "claude-sonnet-5", hasKey: true });
+    expect(body).toEqual({ ok: true, model: "claude-opus-5", hasKey: true, maxRounds: 3 });
     expect(JSON.stringify(body)).not.toContain("sk-secret");
   });
 
