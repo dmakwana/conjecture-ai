@@ -130,7 +130,7 @@ describe("markdown report", () => {
 
   it("handles a run with no results yet", () => {
     const empty = buildMarkdownReport({ profile, loaded, rows: [], generatedAt: new Date() });
-    expect(empty).toContain("duck-invariant report");
+    expect(empty).toContain("conjecture-ai report");
     expect(empty).toContain("0 rounds, 0 hypotheses");
     expect(empty).not.toContain("### What was falsified");
   });
@@ -139,8 +139,8 @@ describe("markdown report", () => {
 describe("reportFilename", () => {
   it("is sortable and safe", () => {
     expect(reportFilename(new Date("2026-09-19T14:30:00"))).toBe(
-      "duck-invariant-20260919-1430.md",
+      "conjecture-ai-20260919-1430.md",
     );
-    expect(reportFilename()).toMatch(/^duck-invariant-\d{8}-\d{4}\.md$/);
+    expect(reportFilename()).toMatch(/^conjecture-ai-\d{8}-\d{4}\.md$/);
   });
 });

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "duck-invariant",
+  title: "conjecture-ai",
   description:
     "Profile a dataset in the browser and test falsifiable hypotheses about it with DuckDB.",
   // Belt and braces alongside robots.txt and the X-Robots-Tag header: a crawler

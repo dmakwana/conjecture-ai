@@ -442,7 +442,7 @@ export default function Page() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-10 space-y-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">duck-invariant</h1>
+        <h1 className="text-xl font-semibold tracking-tight">conjecture-ai</h1>
         <p className="muted text-sm mt-1">
           Profile your data, then test falsifiable hypotheses about it. Everything runs
           entirely in your browser: nothing is uploaded, and your data never leaves this

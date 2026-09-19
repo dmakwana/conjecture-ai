@@ -23,7 +23,7 @@ const column = (name: string) => profile.columns.find((c) => c.name === name)!;
 beforeAll(async () => {
   conn = await createTestConnection();
 
-  const dir = mkdtempSync(path.join(tmpdir(), "duck-invariant-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "conjecture-ai-"));
   fixtureCsv = path.join(dir, "fixture.csv");
   writeFileSync(fixtureCsv, CSV_FIXTURE);
 

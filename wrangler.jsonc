@@ -1,12 +1,12 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "duck-invariant",
+  "name": "conjecture-ai",
   "main": "worker/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   // Every extra public hostname is another way to stumble onto this site.
-  // Preview URLs publish <version>-duck-invariant.<subdomain>.workers.dev,
+  // Preview URLs publish <version>-conjecture-ai.<subdomain>.workers.dev,
   // which is not covered by an Access policy scoped to the production host.
   "preview_urls": false,
   "assets": {

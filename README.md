@@ -1,4 +1,4 @@
-# duck-invariant
+# conjecture-ai
 
 Point it at one or more datasets, and it proposes **falsifiable hypotheses** about them, then
 tests each one locally and tells you which ones are false. Feed the verdicts back and it narrows
@@ -197,7 +197,7 @@ npx wrangler secret put ANTHROPIC_API_KEY
 npm run deploy
 ```
 
-Then protect it: Cloudflare dashboard → Workers & Pages → duck-invariant → **Access** tab →
+Then protect it: Cloudflare dashboard → Workers & Pages → conjecture-ai → **Access** tab →
 "Protect this Worker behind Access". This works on the `workers.dev` hostname with no custom
 domain. Without it, anyone who finds the URL can spend your API key.
 
@@ -278,7 +278,7 @@ Four layers, in descending order of how much they are actually worth:
    it gets the login redirect instead of your page. Everything below is a request that a
    well-behaved crawler chooses to honour; Access is the part that does not depend on goodwill.
 2. **`preview_urls: false`** in `wrangler.jsonc`. Preview URLs publish an extra hostname
-   (`<version>-duck-invariant.<subdomain>.workers.dev`) that an Access policy scoped to the
+   (`<version>-conjecture-ai.<subdomain>.workers.dev`) that an Access policy scoped to the
    production host would not cover.
 3. **`X-Robots-Tag: noindex, nofollow, noarchive, nosnippet`** on every response. Asset responses
    get it from `public/_headers`; Worker responses get it from middleware in `worker/index.ts`,

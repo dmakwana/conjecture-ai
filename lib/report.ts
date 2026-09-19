@@ -43,7 +43,7 @@ function stamp(d: Date): string {
 /** Safe, sortable filename for the downloaded report. */
 export function reportFilename(d: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `duck-invariant-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.md`;
+  return `conjecture-ai-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.md`;
 }
 
 /**
@@ -70,7 +70,7 @@ export function buildMarkdownReport(input: ReportInput): string {
 
   const out: string[] = [];
 
-  out.push(`# duck-invariant report`);
+  out.push(`# conjecture-ai report`);
   out.push("");
   out.push(
     `Generated ${stamp(generatedAt)}. Every check ran locally in the browser.`,

@@ -8,7 +8,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# duck-invariant
+# conjecture-ai
 
 Two invariants hold this project together. Both are load-bearing; check them before changing
 anything in `lib/profile/` or `lib/hypotheses/`.
