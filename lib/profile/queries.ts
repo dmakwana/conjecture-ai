@@ -37,7 +37,14 @@ export function isFloating(sqlType: string): boolean {
  * Everything is computed in a handful of grouped queries rather than one query
  * per column, because a round trip per column is unusably slow on wide tables.
  */
-export function columnAggregates(col: ColumnSpec): string[] {
+/**
+ * Below this many rows an exact DISTINCT is cheap, and worth it: approx_count_distinct
+ * is a sketch that overshoots on small tables, which reads as a unique column
+ * when it is not and sends the model chasing a key that does not exist.
+ */
+export const EXACT_DISTINCT_MAX_ROWS = 250_000;
+
+export function columnAggregates(col: ColumnSpec, exactDistinct = false): string[] {
   const c = quoteIdent(col.name);
   const p = `c${col.ordinal}`;
   const out: string[] = [
@@ -46,7 +53,11 @@ export function columnAggregates(col: ColumnSpec): string[] {
 
   // Nested types cannot be fed to approx_count_distinct.
   if (col.class !== "nested") {
-    out.push(`approx_count_distinct(${c}) AS ${p}_ndv`);
+    out.push(
+      exactDistinct
+        ? `count(DISTINCT ${c}) AS ${p}_ndv`
+        : `approx_count_distinct(${c}) AS ${p}_ndv`,
+    );
   }
 
   switch (col.class) {
@@ -143,8 +154,15 @@ export function chunkColumns(columns: ColumnSpec[], budget = 180): ColumnSpec[][
   return chunks;
 }
 
-export function aggregateQuery(table: string, chunk: ColumnSpec[]): string {
-  const parts = ["count(*) AS row_count", ...chunk.flatMap(columnAggregates)];
+export function aggregateQuery(
+  table: string,
+  chunk: ColumnSpec[],
+  exactDistinct = false,
+): string {
+  const parts = [
+    "count(*) AS row_count",
+    ...chunk.flatMap((c) => columnAggregates(c, exactDistinct)),
+  ];
   return `SELECT ${parts.join(", ")} FROM ${table}`;
 }
 

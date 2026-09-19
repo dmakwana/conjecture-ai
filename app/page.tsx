@@ -74,15 +74,26 @@ export default function Page() {
    * generated SQL reaching the network is irreversible per database, so the
    * database is rebuilt wholesale rather than mutated. See rebuildDatabase.
    */
-  const rebuild = useCallback(async (next: Source[]) => {
-    setError(null);
+  /**
+   * Drop everything derived from the data currently loaded.
+   *
+   * Called before a load starts rather than when the new profile arrives,
+   * otherwise the previous tables and findings stay on screen through the
+   * download and profiling and read as though they describe the new data.
+   */
+  const clearDerived = useCallback(() => {
+    setLoaded(null);
+    setProfile(null);
     setRows([]);
     setExchanges([]);
     setPriorRounds([]);
+  }, []);
+
+  const rebuild = useCallback(async (next: Source[]) => {
+    setError(null);
+    clearDerived();
 
     if (next.length === 0) {
-      setLoaded(null);
-      setProfile(null);
       setPhase("idle");
       setStatus("");
       return;
@@ -120,7 +131,7 @@ export default function Page() {
     setProfile(prof);
     setPhase("ready");
     setStatus("");
-  }, []);
+  }, [clearDerived]);
 
   /**
    * Load a bundled dataset. These are same-origin and known-good, so they skip
@@ -133,6 +144,7 @@ export default function Page() {
       setLoadedDemo(null);
       try {
         setPhase("adding");
+        clearDerived();
         const dataset = demoById(id);
         const { fetchWithProgress } = await import("@/lib/duckdb/load");
 
@@ -147,7 +159,7 @@ export default function Page() {
             id: `${id}:${file.table}`,
             table: file.table,
             label,
-            format: "parquet",
+            format: file.format,
             bytes,
           });
         }
@@ -161,7 +173,7 @@ export default function Page() {
         setStatus("");
       }
     },
-    [rebuild],
+    [rebuild, clearDerived],
   );
 
   const switchMode = useCallback(
@@ -191,6 +203,11 @@ export default function Page() {
           setStatus("");
           return;
         }
+
+        // Past validation, so we are committed to loading: drop the old tables
+        // now rather than after the download, but not before, or a typo in a
+        // URL would wipe data that is perfectly good.
+        clearDerived();
 
         const { fetchWithProgress } = await import("@/lib/duckdb/load");
         const bytes = await fetchWithProgress(url, (p) =>
@@ -227,7 +244,7 @@ export default function Page() {
         setStatus("");
       }
     },
-    [sources, rebuild],
+    [sources, rebuild, clearDerived],
   );
 
   const addFiles = useCallback(
@@ -267,6 +284,7 @@ export default function Page() {
           setStatus("");
           return;
         }
+        clearDerived();
         setSources(next);
         await rebuild(next);
       } catch (err) {
@@ -275,7 +293,7 @@ export default function Page() {
         setStatus("");
       }
     },
-    [sources, rebuild],
+    [sources, rebuild, clearDerived],
   );
 
   const removeSource = useCallback(

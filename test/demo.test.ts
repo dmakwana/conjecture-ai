@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { DEMO_DATASETS, DEFAULT_DEMO, demoById } from "@/lib/demo";
 import { isSafeTableName } from "@/lib/duckdb/tables";
+import { sniffFormat, verifyDownload } from "@/lib/sources/validate";
 
 /** public/ is served at the root, so /data/x maps to public/data/x. */
 const onDisk = (p: string) => path.join("public", p.replace(/^\//, ""));
@@ -55,11 +56,23 @@ describe("demo manifest", () => {
     }
   });
 
+  it("declares the format each file actually is", () => {
+    // loadDemo trusts this. It used to hardcode "parquet", which would have read
+    // cars.json with read_parquet and failed deep inside DuckDB with a message
+    // about neither format.
+    for (const dataset of DEMO_DATASETS) {
+      for (const file of dataset.files) {
+        const bytes = new Uint8Array(readFileSync(onDisk(file.path)));
+        expect(sniffFormat(bytes.subarray(0, 1024)), `${file.path}`).toBe(file.format);
+        expect(verifyDownload(bytes, file.format), `${file.path}`).toBeNull();
+      }
+    }
+  });
+
   it("describes every dataset", () => {
     for (const d of DEMO_DATASETS) {
       expect(d.name.length).toBeGreaterThan(0);
       expect(d.blurb.length).toBeGreaterThan(20);
-      expect(d.lookFor.length).toBeGreaterThan(20);
       expect(d.approxRows).toBeGreaterThan(0);
       expect(d.approxBytes).toBeGreaterThan(0);
     }
@@ -70,6 +83,6 @@ describe("demo manifest", () => {
     const dirs = new Set(
       DEMO_DATASETS.flatMap((d) => d.files.map((f) => f.path.split("/")[2])),
     );
-    expect(dirs).toEqual(new Set(["commerce", "flights", "power"]));
+    expect(dirs).toEqual(new Set(["commerce", "flights", "cars"]));
   });
 });

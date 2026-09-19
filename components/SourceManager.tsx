@@ -15,10 +15,6 @@ export interface SourceSummary {
   bytes: number;
 }
 
-const DEMO = [
-  { label: "lineitem.parquet", url: "https://shell.duckdb.org/data/tpch/0_01/parquet/lineitem.parquet" },
-  { label: "orders.parquet", url: "https://shell.duckdb.org/data/tpch/0_01/parquet/orders.parquet" },
-];
 
 /**
  * Adding data is a choice between a URL and a file, so neither input is shown
@@ -155,25 +151,6 @@ export function SourceManager({
             Parquet, CSV or JSON. Drop files anywhere; add several to test across them.
           </span>
         </div>
-      )}
-
-      {sources.length === 0 && mode === "none" && (
-        <p className="muted text-xs">
-          Or try{" "}
-          {DEMO.map((d, i) => (
-            <span key={d.url}>
-              {i > 0 && " and "}
-              <button
-                onClick={() => onAddUrl(d.url)}
-                disabled={busy}
-                className="underline underline-offset-2 hover:no-underline disabled:opacity-40"
-              >
-                {d.label}
-              </button>
-            </span>
-          ))}{" "}
-          (load both to see cross-table checks).
-        </p>
       )}
 
       {report && !report.ok && <ValidationChecklist checks={report.checks} />}

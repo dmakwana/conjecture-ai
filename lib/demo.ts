@@ -6,13 +6,19 @@
  * format to sniff.
  */
 
-export type DemoId = "commerce" | "flights" | "power";
+import type { SourceFormat } from "@/lib/sources/validate";
+
+export type DemoId = "commerce" | "flights" | "cars";
 
 export interface DemoFile {
   /** SQL identifier. Fixed here rather than derived, so hypotheses about the
    *  demo data are reproducible and the prompt sees stable names. */
   table: string;
   path: string;
+  /** Declared rather than sniffed, since we control these files. A test checks
+   *  the declaration against the bytes, because reading a file as the wrong
+   *  format fails deep inside DuckDB with a message about neither. */
+  format: SourceFormat;
 }
 
 export interface DemoDataset {
@@ -20,8 +26,6 @@ export interface DemoDataset {
   name: string;
   /** What the data is. */
   blurb: string;
-  /** The kind of defect this dataset is good at showing off. */
-  lookFor: string;
   files: DemoFile[];
   approxRows: number;
   approxBytes: number;
@@ -33,16 +37,14 @@ export const DEMO_DATASETS: DemoDataset[] = [
     name: "Commerce",
     blurb:
       "An online marketplace in seven normalised tables: customers, sellers, products, orders, line items, payments and refunds.",
-    lookFor:
-      "Referential integrity across orders, items, payments and refunds, and the arithmetic that should reconcile between them.",
     files: [
-      { table: "customers", path: "/data/commerce/customers.parquet" },
-      { table: "sellers", path: "/data/commerce/sellers.parquet" },
-      { table: "products", path: "/data/commerce/products.parquet" },
-      { table: "orders", path: "/data/commerce/orders.parquet" },
-      { table: "order_items", path: "/data/commerce/order_items.parquet" },
-      { table: "payments", path: "/data/commerce/payments.parquet" },
-      { table: "refunds", path: "/data/commerce/refunds.parquet" },
+      { table: "customers", path: "/data/commerce/customers.parquet", format: "parquet" },
+      { table: "sellers", path: "/data/commerce/sellers.parquet", format: "parquet" },
+      { table: "products", path: "/data/commerce/products.parquet", format: "parquet" },
+      { table: "orders", path: "/data/commerce/orders.parquet", format: "parquet" },
+      { table: "order_items", path: "/data/commerce/order_items.parquet", format: "parquet" },
+      { table: "payments", path: "/data/commerce/payments.parquet", format: "parquet" },
+      { table: "refunds", path: "/data/commerce/refunds.parquet", format: "parquet" },
     ],
     approxRows: 185_000,
     approxBytes: 4_600_000,
@@ -52,22 +54,18 @@ export const DEMO_DATASETS: DemoDataset[] = [
     name: "Flights",
     blurb:
       "Ninety thousand domestic flights with schedules, delays and a breakdown of what caused them.",
-    lookFor:
-      "Arithmetic that should reconcile: delay causes summing to the total, elapsed time against air time plus taxiing, and what a cancelled flight is allowed to record.",
-    files: [{ table: "flights", path: "/data/flights/flights.parquet" }],
+    files: [{ table: "flights", path: "/data/flights/flights.parquet", format: "parquet" }],
     approxRows: 91_000,
     approxBytes: 2_100_000,
   },
   {
-    id: "power",
-    name: "Power",
+    id: "cars",
+    name: "Cars",
     blurb:
-      "Household electricity meter readings sampled over time, with firmware and ingest-batch metadata.",
-    lookFor:
-      "Sensor and pipeline problems: a cumulative register that should never go backwards, sub-meters that should not exceed the total, and gaps between batches.",
-    files: [{ table: "meter_readings", path: "/data/power/meter_readings.parquet" }],
-    approxRows: 89_000,
-    approxBytes: 2_100_000,
+      "Four hundred cars from the 1970s and 80s, with engine size, power, weight, fuel economy and origin.",
+    files: [{ table: "cars", path: "/data/cars/cars.json", format: "json" }],
+    approxRows: 406,
+    approxBytes: 100_492,
   },
 ];
 

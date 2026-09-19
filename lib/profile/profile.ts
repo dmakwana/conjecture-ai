@@ -1,7 +1,10 @@
 import type * as duckdb from "@duckdb/duckdb-wasm";
 import { asNumber, firstRow, toRows } from "@/lib/arrow";
 import type { LoadedDatabase, LoadedTable } from "@/lib/duckdb/load";
-import { aggregateQuery, chunkColumns, classify, shapeQuery, type ColumnSpec } from "./queries";
+import {
+  aggregateQuery, chunkColumns, classify, shapeQuery,
+  EXACT_DISTINCT_MAX_ROWS, type ColumnSpec,
+} from "./queries";
 import { collapseShape } from "./shapes";
 import { assertNoValues } from "./redaction";
 import type { ColumnProfile, DatabaseProfile, TableProfile } from "./types";
@@ -37,6 +40,7 @@ export async function profileTable(
   }));
 
   const chunks = chunkColumns(specs);
+  const exactDistinct = loaded.rowCount <= EXACT_DISTINCT_MAX_ROWS;
   const shapeTargets = specs
     .filter((s) => s.class === "string")
     .slice(0, MAX_SHAPE_COLUMNS);
@@ -47,7 +51,7 @@ export async function profileTable(
   const stats: Row = {};
   let rowCount = loaded.rowCount;
   for (const chunk of chunks) {
-    const row = firstRow<Row>(await conn.query(aggregateQuery(loaded.table, chunk)));
+    const row = firstRow<Row>(await conn.query(aggregateQuery(loaded.table, chunk, exactDistinct)));
     if (row) {
       Object.assign(stats, row);
       rowCount = asNumber(row.row_count) ?? rowCount;
@@ -82,7 +86,10 @@ export async function profileTable(
     const p = `c${spec.ordinal}`;
     const nonNull = n(stats, `${p}_nonnull`);
     const nullCount = Math.max(0, rowCount - nonNull);
-    const approxDistinct = n(stats, `${p}_ndv`);
+    // Exact below EXACT_DISTINCT_MAX_ROWS; above it this is a sketch, and a
+    // sketch can overshoot, which would report more distinct values than there
+    // are rows.
+    const approxDistinct = Math.min(n(stats, `${p}_ndv`), nonNull);
 
     const base: ColumnProfile = {
       name: spec.name,

@@ -36,7 +36,7 @@ known-good, so they skip the CORS and format checks that user-supplied URLs go t
 |---|---|---|---|
 | **Commerce** (default) | 7 | 185k | Referential integrity across orders, items, payments and refunds, and the arithmetic that should reconcile between them |
 | **Flights** | 1 | 91k | Arithmetic that should reconcile: delay causes summing to the total, elapsed time against air time plus taxiing, what a cancelled flight may record |
-| **Power** | 1 | 89k | Sensor and pipeline faults: negative sub-meter readings, implausible draw, sub-meters exceeding the total |
+| **Cars** | 1 | 406 | Small enough to read end to end: physical relationships between engine size, weight and economy, and text hygiene in the model names |
 
 Commerce is the default because it is the multi-table one, and cross-table relationships are
 exactly what a single-table profile cannot reveal.
@@ -291,7 +291,7 @@ matches the hypothesis schema.
 npm test
 ```
 
-118 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
+130 tests. The profiling and evaluation tests run against a real DuckDB via the Node build of
 duckdb-wasm, so they exercise exactly the SQL the browser runs, and `test/integration.test.ts`
 loads a real remote Parquet file end to end.
 

@@ -63,10 +63,6 @@ export function DemoPicker({
 
       <div className="panel rounded-md px-4 py-3">
         <p className="text-sm">{dataset.blurb}</p>
-        <p className="muted text-sm mt-1">
-          <span className="font-medium">What to look for: </span>
-          {dataset.lookFor}
-        </p>
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           <button
             onClick={() => onLoad(dataset.id)}
