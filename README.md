@@ -1,6 +1,7 @@
 # conjecture-ai
 
 **[conjecture-ai.com](https://conjecture-ai.com)**
+(alternative: [conjecture-ai.digvijaymakwana.workers.dev](https://conjecture-ai.digvijaymakwana.workers.dev))
 
 Point it at one or more datasets and it proposes **falsifiable invariant hypotheses** about them, tests each
 one locally, and tells you which are false. Feed the verdicts back and it narrows down *why*.
