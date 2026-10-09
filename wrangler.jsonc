@@ -1,23 +1,15 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "conjecture-ai",
-  "main": "worker/index.ts",
+  // Assets only: there is no Worker script and no server code. Claude is
+  // called straight from the browser with the user's own API key.
   "compatibility_date": "2026-09-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
-  // Every extra public hostname is another way to stumble onto this site.
-  // Preview URLs publish <version>-conjecture-ai.<subdomain>.workers.dev,
-  // which is not covered by an Access policy scoped to the production host.
+  // Every extra public hostname is another copy of the site to keep track of.
+  // Preview URLs publish <version>-conjecture-ai.<subdomain>.workers.dev.
   "preview_urls": false,
   "assets": {
     // `next build` with output:'export' writes here.
     "directory": "./out",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    // Everything else is served straight from the edge without waking the Worker.
-    "run_worker_first": ["/api/*"]
-  },
-  "vars": {
-    "ENVIRONMENT": "production"
+    "not_found_handling": "single-page-application"
   }
 }

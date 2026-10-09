@@ -9,8 +9,8 @@ type Tab = "request" | "response";
 
 /**
  * The full record of the exchange with Claude. There is exactly one request and
- * one response per run, and `httpAttempts` is measured in the Worker rather
- * than assumed, so the count shown here is the real one.
+ * one response per run, and `httpAttempts` is measured by counting fetch calls
+ * rather than assumed, so the count shown here is the real one.
  */
 export function ExchangePanel({ exchanges }: { exchanges: Exchange[] }) {
   const [open, setOpen] = useState(false);

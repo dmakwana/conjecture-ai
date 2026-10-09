@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * The hypothesis contract, shared by the Worker (which asks Claude for these)
- * and the browser (which evaluates them).
+ * The hypothesis contract, shared by the code that asks Claude for these
+ * (generate.ts) and the code that evaluates them (evaluate.ts).
  *
  * Claude never emits raw SQL. It emits a structured *check*, so the FROM clause
  * is always ours and the result shape is always a violation count. That closes

@@ -1,3 +1,0 @@
-# Copy to .dev.vars (gitignored) and fill in.
-ANTHROPIC_API_KEY=sk-ant-...
-ENVIRONMENT=development

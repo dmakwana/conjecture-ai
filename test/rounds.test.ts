@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import Anthropic from "@anthropic-ai/sdk";
-import { generateHypotheses, MAX_ROUNDS, MODEL } from "@/worker/hypotheses";
-import app from "@/worker/index";
-import { buildFollowUpMessage } from "@/worker/prompt";
+import { generateHypotheses, MAX_ROUNDS, MODEL } from "@/lib/hypotheses/generate";
+import { requestHypotheses } from "@/lib/api";
+import { buildFollowUpMessage } from "@/lib/hypotheses/prompt";
 import type { DatabaseProfile } from "@/lib/profile/types";
 import type { PriorRound } from "@/lib/hypotheses/findings";
 import { PII_LITERALS } from "./fixtures";
@@ -142,22 +142,22 @@ describe("round limit", () => {
     expect(MAX_ROUNDS).toBe(3);
   });
 
-  it("refuses a request that would exceed it", async () => {
+  it("refuses a request that would exceed it, before any request is made", async () => {
     const rounds = [priorRound(), { ...priorRound(), round: 2 }, { ...priorRound(), round: 3 }];
-    const res = await app.request("/api/hypotheses", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile, priorRounds: rounds }),
-    }, { ANTHROPIC_API_KEY: "sk-test", ENVIRONMENT: "production" });
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/maximum of 3 rounds/);
+    let calls = 0;
+    const fetchImpl = (async () => { calls++; throw new Error("unreachable"); }) as typeof fetch;
+    await expect(
+      requestHypotheses("sk-test", profile, rounds, { fetchImpl }),
+    ).rejects.toThrow(/maximum of 3 rounds/);
+    expect(calls).toBe(0);
   });
 
-  it("accepts a malformed priorRounds as a clean 400, not a crash", async () => {
-    const res = await app.request("/api/hypotheses", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ profile, priorRounds: [{ nope: true }] }),
-    }, { ANTHROPIC_API_KEY: "sk-test", ENVIRONMENT: "production" });
-    expect(res.status).toBe(400);
+  it("rejects a malformed priorRounds cleanly, without sending it", async () => {
+    let calls = 0;
+    const fetchImpl = (async () => { calls++; throw new Error("unreachable"); }) as typeof fetch;
+    await expect(
+      requestHypotheses("sk-test", profile, [{ nope: true }] as never, { fetchImpl }),
+    ).rejects.toThrow();
+    expect(calls).toBe(0);
   });
 });

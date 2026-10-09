@@ -1,17 +1,18 @@
 import type { MetadataRoute } from "next";
-import { ALL_CRAWLERS } from "@/lib/crawlers";
+import { AI_TRAINING_CRAWLERS } from "@/lib/crawlers";
+import { SITE_URL } from "@/lib/site";
 
 /**
- * Ask every crawler to stay away, both under the wildcard and by name.
- * See lib/crawlers.ts for why the explicit names matter.
+ * Open to every crawler except the AI training ones named in lib/crawlers.ts.
  */
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      { userAgent: "*", disallow: "/" },
-      { userAgent: ALL_CRAWLERS, disallow: "/" },
+      { userAgent: "*", allow: "/" },
+      { userAgent: AI_TRAINING_CRAWLERS, disallow: "/" },
     ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

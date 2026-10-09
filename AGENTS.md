@@ -17,6 +17,7 @@ anything in `lib/profile/` or `lib/hypotheses/`.
    field that carries a value, such as a min/max on a string column, a top-k of actual values or
    a sample row, breaks the product's central claim. `lib/profile/redaction.ts` and the PII fixtures in
    `test/profile.test.ts` are there to catch exactly that.
+   The profile goes from the browser straight to Anthropic; there is no server of ours in between.
 2. **Model-authored SQL is contained.** Claude emits structured checks, never raw SQL. The `FROM`
    clause is always ours. `lib/hypotheses/guard.ts` rejects `SELECT`, semicolons, comments, and
    file/URL functions; `SET enable_external_access=false` runs before any generated SQL. Do not
@@ -24,6 +25,10 @@ anything in `lib/profile/` or `lib/hypotheses/`.
 
 Practical notes:
 
+- The user's Anthropic API key lives only in their browser's localStorage (`lib/apiKey.ts`) and is
+  sent only to `api.anthropic.com`, in the `x-api-key` header, by `lib/api.ts`. Never put it in the
+  `Exchange`, the report, a URL, or an error message (`scrub` exists for the last), and do not add a
+  server endpoint that receives it. `test/api.test.ts` checks this.
 - DuckDB coerces across type families instead of erroring. A join between a BIGINT key and a
   zero-padded VARCHAR key silently matches `'0001'` to `1`, so any comparison built across two
   columns must check `typeFamily` first. See `assertComparable` in `lib/hypotheses/evaluate.ts`.

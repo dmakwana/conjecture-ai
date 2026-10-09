@@ -22,9 +22,12 @@ published alongside it: 39 prompts over 8 pages, including the dead ends.
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars     # add your Anthropic API key
-npm run dev                        # next on :3000, worker on :8787
+npm run dev                        # http://localhost:3000
 ```
+
+There is no server and no server-side key. Each visitor pastes their own Anthropic API key into the
+page; it is saved in that browser's localStorage and sent only to `api.anthropic.com`, straight from
+the browser. Usage is billed to their Anthropic account.
 
 It lands in demo mode with Commerce pre-selected; one click loads it. Switch to **Your Own Data**
 for a CORS-enabled Parquet/CSV/JSON URL or your own files.
@@ -76,8 +79,8 @@ the data and every round.
 | Masked shapes: `aaron.blake@acme.io` → `a{5}.a{5}@a{4}.aa` | |
 | On later rounds, pass/fail counts of prior checks | |
 
-Enforced in three places: `assertNoValues()` gates the profile client-side, the Worker re-parses it
-through the same zod schema so a modified client cannot widen it, and tests profile fixtures seeded
+Enforced in three places: `assertNoValues()` gates the profile client-side, `lib/api.ts` re-parses it
+through the same zod schema just before sending so nothing undeclared can ride along, and tests profile fixtures seeded
 with realistic PII and assert none of it survives. **Inspect Prompt** shows the exact request body,
 so none of it needs taking on trust.
 
@@ -87,7 +90,7 @@ cell value straight back. `lib/hypotheses/findings.ts` reduces every reason to a
 identifiers the model already has, discarding all quoted text.
 
 Each round is exactly one request and one response. No agent loop and no tools declared at all, so
-the model cannot ask for another turn; the Worker counts its own HTTP calls, making that measured
+the model cannot ask for another turn; `lib/api.ts` counts its own HTTP calls, making that measured
 rather than asserted.
 
 ## How generated SQL is contained
@@ -137,33 +140,32 @@ against the same locked-down database, so a query typed here cannot reach a file
 
 ```bash
 npx wrangler login
-npx wrangler secret put ANTHROPIC_API_KEY
 npm run deploy
 ```
 
-Then protect it: dashboard → Workers & Pages → conjecture-ai → **Access** tab → "Protect this
-Worker behind Access". This works on the `workers.dev` hostname with no custom domain. **Without
-it, anyone who finds the URL can spend your API key.**
+The site is static assets only, with no Worker script and no secrets, so it is safe to leave public:
+there is no key of ours to spend.
 
-It is also kept out of search engines and AI training sets: `preview_urls: false`,
-`X-Robots-Tag: noindex` on both asset and Worker responses, and a `robots.txt` naming 53 crawlers
-alongside the wildcard. The names matter because `Google-Extended` and `Applebot-Extended` are not
-crawlers at all but AI-training opt-out tokens, ignored under `User-agent: *`. All voluntary,
-though; Access is the only part that enforces.
+Search engines are welcome: `robots.txt` allows everything and points at `sitemap.xml`. Only AI
+*training* crawlers are asked to stay out, by name (`lib/crawlers.ts`), since a disallow under
+`User-agent: *` would block search too. `Google-Extended` and `Applebot-Extended` are training
+opt-out tokens rather than crawlers, so Google and Apple still index the site for search. All
+voluntary.
 
 ## Layout
 
 ```
-app/                    one page, client-side
+app/                    the app page and /terms, client-side
 components/             source manager, profile panel, hypothesis list, modals, SQL console
 lib/demo.ts             the three bundled datasets and their manifests
 lib/report.ts           the Markdown export
 lib/sources/validate.ts URL preflight: CORS, ranges, size, magic-byte format sniffing
 lib/duckdb/             bundles (swappable CDN → R2), client, table naming, rebuild + lockdown
 lib/profile/            SQL builders, orchestration, shape masking, redaction
-lib/hypotheses/         shared schema, expression guard, local evaluation, findings
+lib/api.ts              calls Claude from the browser with the user's key
+lib/apiKey.ts           the key's localStorage store
+lib/hypotheses/         prompt + request, schema, expression guard, local evaluation, findings
 lib/sql/statements.ts   statement splitting for the console
-worker/                 Hono: /api/health, /api/hypotheses  (the only server code)
 ```
 
 `lib/duckdb/bundles.ts` is the only file that knows where the WebAssembly comes from. It cannot
@@ -176,7 +178,7 @@ limit, so it loads from jsDelivr. To self-host, set `NEXT_PUBLIC_DUCKDB_BASE_URL
 npm test
 ```
 
-156 tests. Profiling and evaluation run against a real DuckDB via duckdb-wasm's Node build, so they
+170 tests. Profiling and evaluation run against a real DuckDB via duckdb-wasm's Node build, so they
 exercise the same SQL the browser does; `test/integration.test.ts` loads a real remote Parquet file
 end to end.
 
@@ -186,4 +188,4 @@ end to end.
 - Every loaded source is held in memory, so very large files are slow. The UI warns above 500 MB.
 - Single-threaded DuckDB; the threaded build needs site-wide cross-origin isolation.
 - Cross-table checks are value containment; arbitrary joins are not expressible.
-- `claude-opus-5`, hardcoded server-side. Roughly $0.40 a round on Commerce, 80-110s each.
+- `claude-opus-5`, fixed. Roughly $0.40 a round on Commerce, 80-110s each, on the user's own key.

@@ -28,13 +28,14 @@ export class UnusableResponseError extends Error {}
 /**
  * One request, one response. There is no agent loop and no tool use here: the
  * model is asked once for structured output and that is the whole exchange.
- * Extracted from the route so a test can drive it with a request-counting
- * client and assert that.
+ * Takes the client as a parameter so a test can drive it with a
+ * request-counting fake and assert that. lib/api.ts builds the real one.
  */
 export async function generateHypotheses(
   client: Anthropic,
   profile: DatabaseProfile,
   priorRounds: PriorRound[] = [],
+  signal?: AbortSignal,
 ): Promise<{ hypotheses: Hypothesis[]; exchange: Omit<Exchange, "httpAttempts"> }> {
   const round = priorRounds.length + 1;
   // Round 1 gets the extra guidance about diagnostic hypotheses; later rounds
@@ -56,7 +57,7 @@ export async function generateHypotheses(
     output_config: { format: betaZodOutputFormat(WireHypothesesSchema) },
     betas: [FALLBACK_BETA],
     fallbacks: "default",
-  });
+  }, { signal });
 
   const latencyMs = Date.now() - started;
 

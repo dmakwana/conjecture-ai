@@ -18,13 +18,14 @@ import {
   assertFindingsSafe, knownIdentifiers, toFinding,
   type Finding, type PriorRound,
 } from "@/lib/hypotheses/findings";
-import { MAX_ROUNDS } from "@/worker/prompt";
+import { MAX_ROUNDS } from "@/lib/hypotheses/prompt";
 import { buildMarkdownReport, reportFilename } from "@/lib/report";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { HypothesisList, type HypothesisRow } from "@/components/HypothesisList";
 import { ExchangePanel } from "@/components/ExchangePanel";
 import { SourceManager, type SourceSummary } from "@/components/SourceManager";
 import { DemoPicker } from "@/components/DemoPicker";
+import { ApiKeyField, useApiKey } from "@/components/ApiKeyField";
 import { ThinkingDots } from "@/components/Spinner";
 import { IconCode, IconDownload } from "@/components/icons";
 import dynamic from "next/dynamic";
@@ -61,6 +62,7 @@ export default function Page() {
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [priorRounds, setPriorRounds] = useState<PriorRound[]>([]);
   const [sqlOpen, setSqlOpen] = useState(false);
+  const apiKey = useApiKey();
 
   const dbRef = useRef<duckdb.AsyncDuckDB | null>(null);
   const connRef = useRef<duckdb.AsyncDuckDBConnection | null>(null);
@@ -334,6 +336,7 @@ export default function Page() {
   const runRound = useCallback(async () => {
     if (!profile || !loaded || !schema || !dbRef.current) return;
     if (priorRounds.length >= MAX_ROUNDS) return;
+    if (!apiKey) return;
 
     setError(null);
     setPhase("thinking");
@@ -342,8 +345,8 @@ export default function Page() {
     const round = priorRounds.length + 1;
 
     try {
-      // One request, one response per round. See worker/hypotheses.ts.
-      const response = await requestHypotheses(profile, priorRounds);
+      // One request, one response per round. See lib/hypotheses/generate.ts.
+      const response = await requestHypotheses(apiKey, profile, priorRounds);
       setExchanges((prev) => [...prev, response.exchange]);
 
       // Ids are assigned per response, so round 2 would hand out h1 again and
@@ -397,7 +400,7 @@ export default function Page() {
       setPhase("ready");
       setStatus("");
     }
-  }, [profile, loaded, schema, rowCounts, priorRounds]);
+  }, [apiKey, profile, loaded, schema, rowCounts, priorRounds]);
 
   /**
    * Download the run as Markdown. Nothing here is persisted, so a saved file is
@@ -541,14 +544,16 @@ export default function Page() {
             </div>
           )}
 
+          <ApiKeyField disabled={busy} />
+
           <div className="flex items-center gap-4 flex-wrap">
             <button
               onClick={runRound}
-              disabled={busy || priorRounds.length >= MAX_ROUNDS}
+              disabled={busy || !apiKey || priorRounds.length >= MAX_ROUNDS}
               className="rounded-md px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {priorRounds.length === 0
-                ? "Find invariants"
+                ? "Discover potential invariants"
                 : `Dig deeper (round ${priorRounds.length + 1} of ${MAX_ROUNDS})`}
             </button>
 

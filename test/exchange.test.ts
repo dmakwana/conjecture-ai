@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import Anthropic from "@anthropic-ai/sdk";
-import { generateHypotheses, MODEL } from "@/worker/hypotheses";
+import { generateHypotheses, MODEL } from "@/lib/hypotheses/generate";
 import type { DatabaseProfile, TableProfile } from "@/lib/profile/types";
 
 const table: TableProfile = {
